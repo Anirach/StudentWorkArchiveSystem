@@ -143,6 +143,9 @@ function WorkFormModal({ work, onClose, onSave }) {
     if (formData.author_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.author_email)) {
       newErrors.author_email = 'Please enter a valid email address';
     }
+    if (formData.academic_year && !/^\d{4}$/.test(formData.academic_year)) {
+      newErrors.academic_year = 'Please enter a valid 4-digit year';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -292,9 +295,12 @@ function WorkFormModal({ work, onClose, onSave }) {
               name="academic_year"
               value={formData.academic_year}
               onChange={handleChange}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.academic_year ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
               placeholder="2024"
             />
+            {errors.academic_year && (
+              <p className="text-red-500 text-sm mt-1">{errors.academic_year}</p>
+            )}
           </div>
 
           {/* Google File ID */}
