@@ -65,9 +65,18 @@ router.get('/', (req, res) => {
     const countStmt = db.prepare(`SELECT COUNT(DISTINCT w.id) as count ${fromClause} ${whereClause}`);
     const { count } = countStmt.get(...params);
 
-    // Get works
-    const allowedSorts = ['created_at', 'view_count', 'download_count', 'title'];
-    const sortColumn = allowedSorts.includes(sort) ? sort : 'created_at';
+    // Get works - map frontend sort values to database columns
+    const sortMap = {
+      'date': 'w.created_at',
+      'created_at': 'w.created_at',
+      'views': 'w.view_count',
+      'view_count': 'w.view_count',
+      'downloads': 'w.download_count',
+      'download_count': 'w.download_count',
+      'rating': 'avg_rating',
+      'title': 'w.title'
+    };
+    const sortColumn = sortMap[sort] || 'w.created_at';
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
     const stmt = db.prepare(`
