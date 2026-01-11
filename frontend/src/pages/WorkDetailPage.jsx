@@ -14,6 +14,7 @@ export default function WorkDetailPage() {
   const [activeTab, setActiveTab] = useState('description');
   const [userVote, setUserVote] = useState(0);
   const [newComment, setNewComment] = useState('');
+  const [isFavorited, setIsFavorited] = useState(false);
 
   useEffect(() => {
     fetchWork();
@@ -29,6 +30,7 @@ export default function WorkDetailPage() {
       if (data.success) {
         setWork(data.data);
         if (data.data.user_vote) setUserVote(data.data.user_vote);
+        if (data.data.is_favorited) setIsFavorited(data.data.is_favorited);
       }
     } catch (err) {
       console.error('Failed to fetch work:', err);
@@ -88,6 +90,27 @@ export default function WorkDetailPage() {
       }
     } catch (err) {
       error('Failed to post comment');
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!isAuthenticated) {
+      error('Please log in to add favorites');
+      return;
+    }
+    try {
+      const method = isFavorited ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/works/${id}/favorite`, {
+        method,
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        setIsFavorited(!isFavorited);
+        success(isFavorited ? 'Removed from favorites' : 'Added to favorites!');
+      }
+    } catch (err) {
+      error('Failed to update favorites');
     }
   };
 
@@ -253,8 +276,11 @@ export default function WorkDetailPage() {
                 Share
               </button>
               {isAuthenticated && (
-                <button className="w-full px-4 py-2 border rounded-lg hover:bg-accent">
-                  Add to Favorites
+                <button
+                  onClick={handleFavorite}
+                  className="w-full px-4 py-2 border rounded-lg hover:bg-accent"
+                >
+                  {isFavorited ? 'Remove from Favorites' : 'Add to Favorites'}
                 </button>
               )}
             </div>

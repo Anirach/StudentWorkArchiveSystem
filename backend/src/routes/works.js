@@ -126,6 +126,34 @@ router.get('/featured', (req, res) => {
   }
 });
 
+// GET /api/works/favorites - List user's favorites (must be before /:id)
+router.get('/favorites', isAuthenticated, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const stmt = db.prepare(`
+      SELECT w.*,
+             c.name as category_name,
+             wt.name as work_type_name,
+             (SELECT AVG(stars) FROM votes WHERE work_id = w.id) as avg_rating,
+             (SELECT COUNT(*) FROM votes WHERE work_id = w.id) as vote_count,
+             f.created_at as favorited_at
+      FROM favorites f
+      JOIN works w ON f.work_id = w.id
+      LEFT JOIN categories c ON w.category_id = c.id
+      LEFT JOIN work_types wt ON w.work_type_id = wt.id
+      WHERE f.user_id = ?
+      ORDER BY f.created_at DESC
+    `);
+    const favorites = stmt.all(userId);
+
+    res.success(favorites);
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
+    res.error('Failed to fetch favorites', 'ERROR', 500);
+  }
+});
+
 // GET /api/works/search - Full-text search
 router.get('/search', (req, res) => {
   try {
@@ -633,34 +661,6 @@ router.delete('/:id/favorite', isAuthenticated, (req, res) => {
   } catch (error) {
     console.error('Error removing from favorites:', error);
     res.error('Failed to remove from favorites', 'ERROR', 500);
-  }
-});
-
-// GET /api/favorites - List user's favorites
-router.get('/favorites', isAuthenticated, (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const stmt = db.prepare(`
-      SELECT w.*,
-             c.name as category_name,
-             wt.name as work_type_name,
-             (SELECT AVG(stars) FROM votes WHERE work_id = w.id) as avg_rating,
-             (SELECT COUNT(*) FROM votes WHERE work_id = w.id) as vote_count,
-             f.created_at as favorited_at
-      FROM favorites f
-      JOIN works w ON f.work_id = w.id
-      LEFT JOIN categories c ON w.category_id = c.id
-      LEFT JOIN work_types wt ON w.work_type_id = wt.id
-      WHERE f.user_id = ?
-      ORDER BY f.created_at DESC
-    `);
-    const favorites = stmt.all(userId);
-
-    res.success(favorites);
-  } catch (error) {
-    console.error('Error fetching favorites:', error);
-    res.error('Failed to fetch favorites', 'ERROR', 500);
   }
 });
 

@@ -11,7 +11,7 @@ export default function FavoritesPage() {
 
   const fetchFavorites = async () => {
     try {
-      const response = await fetch('/api/favorites', { credentials: 'include' });
+      const response = await fetch('/api/works/favorites', { credentials: 'include' });
       const data = await response.json();
       if (data.success) setFavorites(data.data);
     } catch (error) {
