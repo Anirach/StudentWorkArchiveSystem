@@ -911,3 +911,64 @@ All regression tests passed. The Student Work Archive System continues to functi
 - All navigation including breadcrumbs functional
 
 The project remains at 100% feature completion with no regressions detected
+
+---
+
+## Session 13: Additional Regression Testing
+
+### Date: Session 13
+
+### Summary:
+This session performed additional regression testing on 3 randomly selected passing features to verify the system remains fully functional.
+
+### Servers Started:
+- Backend: http://localhost:3000
+- Frontend: http://localhost:5173
+
+### Regression Tests Performed:
+
+1. **#179: Work card displays metadata** ✅
+   - Navigated to browse page (115 works found)
+   - Work cards display:
+     - Title (e.g., "Machine Learning Project Report")
+     - Author (e.g., "John Doe")
+     - View count (e.g., "4 views")
+     - Download count (e.g., "0 downloads")
+     - Work type badges (e.g., "Project", "Report", "Thesis")
+   - Pagination working (10 pages)
+   - Sorting and filtering available
+
+2. **#53 (D8): Submit and update vote** ✅
+   - Logged in as user
+   - Navigated to work detail page (Work ID 139 - "Web Application Development")
+   - Submitted 3-star vote → Rating updated to 3.0 (1 votes)
+   - Changed vote to 5 stars → Rating updated to 5.0 (still 1 vote - updated, not duplicate)
+   - Refreshed page → Vote persisted at 5.0
+   - Vote system working correctly
+
+3. **#104 (J4): Delete tag updates work tags** ✅
+   - Logged in as admin
+   - Created test tag "REGTEST_TAG_J104"
+   - Assigned tag to work "Machine Learning Project Report" (ID 138)
+   - Verified tag in work's API response: `"tags":[{"id":15,"name":"REGTEST_TAG_J104","color":"#6B7280"}]`
+   - Deleted the tag from admin/tags page
+   - Verified work's tags array is now empty: `"tags":[]`
+   - Cascade deletion working correctly
+
+### Current Status:
+- **Total Features**: 197
+- **Passing**: 197
+- **In Progress**: 0
+- **Percentage Complete**: 100.0% ✅
+
+### Conclusion:
+All 3 regression tests passed. The Student Work Archive System continues to function correctly:
+- Work cards display all metadata properly
+- Voting system allows submit and update of votes
+- Tag deletion properly cascades to remove tags from associated works
+- Authentication and authorization working correctly
+- All CRUD operations functioning as expected
+
+The project remains at 100% feature completion with no regressions detected.
+
+---
