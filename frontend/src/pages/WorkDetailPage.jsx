@@ -155,6 +155,23 @@ export default function WorkDetailPage() {
     setEditCommentText('');
   };
 
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+    try {
+      const response = await fetch(`/api/works/comments/${commentId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchComments();
+        success('Comment deleted!');
+      }
+    } catch (err) {
+      error('Failed to delete comment');
+    }
+  };
+
   const handleDownload = async () => {
     try {
       const response = await fetch(`/api/works/${id}/download`, {
@@ -294,12 +311,20 @@ export default function WorkDetailPage() {
                           <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
                         </div>
                         {user && user.id === comment.user_id && (
-                          <button
-                            onClick={() => handleEditComment(comment)}
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            Edit
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditComment(comment)}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="text-xs text-red-500 hover:text-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         )}
                       </div>
                       {editingCommentId === comment.id ? (
