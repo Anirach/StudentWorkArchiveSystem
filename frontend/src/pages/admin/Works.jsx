@@ -361,6 +361,28 @@ export default function AdminWorks() {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const response = await fetch('/api/admin/export/csv', { credentials: 'include' });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'works-export.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        success('Export downloaded!');
+      } else {
+        error('Failed to export works');
+      }
+    } catch (err) {
+      error('Failed to export works');
+    }
+  };
+
   const filteredWorks = works.filter(work =>
     work.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     work.author_name?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -387,6 +409,12 @@ export default function AdminWorks() {
           </button>
           <button className="px-4 py-2 border rounded-lg hover:bg-accent">
             Import from Drive
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2 border rounded-lg hover:bg-accent"
+          >
+            Export CSV
           </button>
         </div>
       </div>
