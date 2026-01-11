@@ -1,12 +1,23 @@
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { mkdirSync, existsSync } from 'fs';
 import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '../../../.env') });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const dbPath = process.env.DATABASE_PATH || join(dirname(fileURLToPath(import.meta.url)), '../../data/archive.db');
+// Load environment variables
+dotenv.config({ path: join(__dirname, '../../../.env') });
+
+// Use absolute path for database
+const dbPath = process.env.DATABASE_PATH || join(__dirname, '../../data/archive.db');
+
+// Ensure data directory exists
+const dataDir = dirname(dbPath);
+if (!existsSync(dataDir)) {
+  mkdirSync(dataDir, { recursive: true });
+}
 
 console.log('Initializing database at:', dbPath);
 

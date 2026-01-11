@@ -1,0 +1,719 @@
+<project_specification>
+  <project_name>Student Work Archive System</project_name>
+
+  <overview>
+    A web-based system for archiving, browsing, and showcasing student works (projects, reports, theses, presentations, etc.) stored on Google Shared Drive. Users can view, vote, and comment on submissions while administrators manage content organization and system configuration. The system integrates with Google OAuth for authentication and Google Drive API for file storage and streaming.
+  </overview>
+
+  <technology_stack>
+    <frontend>
+      <framework>React + Vite</framework>
+      <styling>Tailwind CSS with shadcn/ui components</styling>
+      <pdf_viewer>PDF.js (Mozilla's PDF rendering library)</pdf_viewer>
+      <charts>Recharts (for analytics dashboard)</charts>
+    </frontend>
+    <backend>
+      <runtime>Node.js + Express</runtime>
+      <database>SQLite via better-sqlite3</database>
+      <authentication>Passport.js + Google OAuth 2.0</authentication>
+      <email>Nodemailer (for notifications)</email>
+    </backend>
+    <communication>
+      <api>REST API</api>
+      <format>JSON with standardized response structure</format>
+    </communication>
+    <integrations>
+      <file_storage>Google Drive API v3 (Shared Drive)</file_storage>
+      <search>SQLite FTS5 (built-in full-text search)</search>
+    </integrations>
+  </technology_stack>
+
+  <prerequisites>
+    <environment_setup>
+      - Node.js 18+ installed
+      - Google Cloud Project with Drive API and OAuth 2.0 enabled
+      - Google OAuth 2.0 credentials (Client ID and Secret)
+      - Access to a Google Shared Drive for file storage
+      - SMTP server credentials (optional, for email notifications)
+    </environment_setup>
+  </prerequisites>
+
+  <feature_count>180</feature_count>
+
+  <security_and_access_control>
+    <user_roles>
+      <role name="admin">
+        <description>Full system administrator with complete access</description>
+        <permissions>
+          - Configure system settings (Drive URL, domain restriction, site info)
+          - Manage all works (create, edit, delete, feature/unfeature)
+          - Bulk import works from Google Drive folders
+          - Manage categories (create, edit, delete, reorder)
+          - Manage tags (create, edit, delete with color picker)
+          - Manage work types (create, edit, delete)
+          - Manage users (view, change roles, disable accounts)
+          - View full analytics dashboard
+          - Export reports (CSV, PDF)
+          - All User permissions
+        </permissions>
+        <protected_routes>
+          - /admin/* (all admin routes)
+          - /admin/config
+          - /admin/works/manage
+          - /admin/categories
+          - /admin/tags
+          - /admin/users
+          - /admin/analytics
+        </protected_routes>
+      </role>
+      <role name="user">
+        <description>Authenticated user with full interaction capabilities</description>
+        <permissions>
+          - Browse and search all public works
+          - View work details with PDF viewer
+          - Vote on works (0-5 stars, one vote per work)
+          - Post, edit, and delete own comments
+          - Reply to comments (threaded)
+          - Add works to favorites/bookmarks
+          - Download works (tracked)
+          - Generate shareable links for works
+          - View own profile (favorites, votes, comments)
+          - Manage notification preferences
+        </permissions>
+        <protected_routes>
+          - /profile (own profile only)
+          - /favorites
+        </protected_routes>
+      </role>
+      <role name="guest">
+        <description>Unauthenticated visitor with read-only access</description>
+        <permissions>
+          - Browse public works (if allow_guest_view is enabled)
+          - View work details with PDF viewer
+          - View comments (read-only)
+          - View ratings (read-only)
+          - Access shared public links
+        </permissions>
+        <restrictions>
+          - Cannot vote on works
+          - Cannot post comments
+          - Cannot add to favorites
+          - Cannot download (configurable)
+          - Cannot access user profile features
+        </restrictions>
+      </role>
+    </user_roles>
+    <authentication>
+      <method>Google OAuth 2.0</method>
+      <domain_restriction>Optional (e.g., @fitm.kmutnb.ac.th)</domain_restriction>
+      <session_management>JWT tokens with secure cookies</session_management>
+      <session_timeout>Configurable via admin settings</session_timeout>
+    </authentication>
+    <sensitive_operations>
+      - Delete work requires confirmation dialog
+      - Bulk operations require confirmation
+      - Role changes require admin authentication
+      - System configuration changes logged
+    </sensitive_operations>
+    <security_measures>
+      - HTTPS enforced
+      - CSRF protection
+      - Rate limiting on API endpoints
+      - Input validation and sanitization
+      - SQL injection prevention (parameterized queries)
+      - XSS prevention (content escaping)
+    </security_measures>
+  </security_and_access_control>
+
+  <core_features>
+    <google_drive_integration>
+      - Admin configures Shared Drive URL/ID for centralized storage
+      - Connect and validate Shared Drive access
+      - List and browse files from Drive folders
+      - Bulk import PDFs with automatic metadata extraction
+      - Generate thumbnail previews for works
+      - Stream PDFs directly without server download
+      - Sync status check (verify files still exist)
+    </google_drive_integration>
+
+    <work_management>
+      - Support multiple work types (Project, Report, Thesis, Presentation - admin-defined)
+      - Hierarchical category management with subcategories
+      - Flexible tag system with custom colors
+      - Full CRUD operations for works
+      - Feature/unfeature works for homepage highlight
+      - View count tracking (automatic on PDF view)
+      - Download count tracking
+      - Share token generation for public links
+      - Related works suggestions (by category, tags, or author)
+    </work_management>
+
+    <pdf_viewing>
+      - Built-in PDF viewer using PDF.js
+      - Page navigation and zoom controls
+      - Automatic view count increment
+      - Responsive viewer for mobile/desktop
+    </pdf_viewing>
+
+    <search_and_browse>
+      - Full-text search across titles, descriptions, authors, and tags
+      - Filter by category (hierarchical)
+      - Filter by work type
+      - Filter by tags (multiple selection)
+      - Filter by academic year
+      - Sort by date, rating, views, downloads
+      - Grid and list view toggle
+      - Pagination with configurable items per page
+    </search_and_browse>
+
+    <voting_system>
+      - Star rating (0-5 stars)
+      - One vote per user per work
+      - Update or remove existing vote
+      - Display average rating and vote count
+      - Real-time rating update on vote
+    </voting_system>
+
+    <comments_system>
+      - Post comments on works
+      - Threaded replies (parent-child)
+      - Edit own comments
+      - Delete own comments (soft delete)
+      - Admin can moderate/delete any comment
+      - Timestamp display (relative and absolute)
+    </comments_system>
+
+    <favorites_bookmarks>
+      - Add/remove works from personal favorites
+      - View favorites list in profile
+      - Quick access to bookmarked works
+    </favorites_bookmarks>
+
+    <sharing>
+      - Generate unique shareable link per work
+      - Public access via share token (no auth required)
+      - Copy link to clipboard functionality
+    </sharing>
+
+    <user_profile>
+      - View own favorites list
+      - View voting history
+      - View comment history
+      - Manage notification preferences
+    </user_profile>
+
+    <admin_dashboard>
+      - Overview statistics (total works, views, downloads, users)
+      - New works this week/month
+      - Top 10 most viewed works
+      - Top 10 highest rated works
+      - Views/downloads trend charts
+      - Category distribution pie chart
+      - Active users count
+      - Recent activity feed
+    </admin_dashboard>
+
+    <admin_management>
+      - System configuration (Drive settings, domain restriction, site info)
+      - Works management with bulk import
+      - Categories CRUD with drag-drop reordering
+      - Tags CRUD with color picker
+      - Work types CRUD
+      - User management (view, role change, disable)
+    </admin_management>
+
+    <export_reports>
+      - Export works list as CSV
+      - Export analytics report as PDF
+      - Export user activity as CSV
+      - Export votes summary as CSV
+    </export_reports>
+
+    <email_notifications>
+      - New work added notification (opt-in)
+      - New comment on voted/commented work
+      - Reply to your comment notification
+      - Weekly digest of top works (opt-in)
+      - Admin configurable SMTP settings
+    </email_notifications>
+  </core_features>
+
+  <database_schema>
+    <tables>
+      <categories>
+        - id (INTEGER PRIMARY KEY)
+        - name (TEXT NOT NULL)
+        - description (TEXT)
+        - parent_id (INTEGER, self-reference for hierarchy)
+        - sort_order (INTEGER DEFAULT 0)
+        - created_at (DATETIME)
+      </categories>
+
+      <work_types>
+        - id (INTEGER PRIMARY KEY)
+        - name (TEXT NOT NULL) - 'Project', 'Report', 'Thesis', etc.
+        - icon (TEXT)
+        - created_at (DATETIME)
+      </work_types>
+
+      <tags>
+        - id (INTEGER PRIMARY KEY)
+        - name (TEXT UNIQUE NOT NULL)
+        - color (TEXT DEFAULT '#6B7280')
+      </tags>
+
+      <work_tags>
+        - work_id (INTEGER, FK to works)
+        - tag_id (INTEGER, FK to tags)
+        - PRIMARY KEY (work_id, tag_id)
+      </work_tags>
+
+      <works>
+        - id (INTEGER PRIMARY KEY)
+        - title (TEXT NOT NULL)
+        - description (TEXT)
+        - author_name (TEXT)
+        - author_email (TEXT)
+        - academic_year (TEXT)
+        - work_type_id (INTEGER, FK to work_types)
+        - category_id (INTEGER, FK to categories)
+        - google_file_id (TEXT NOT NULL)
+        - file_url (TEXT)
+        - thumbnail_url (TEXT)
+        - file_size (INTEGER)
+        - page_count (INTEGER)
+        - view_count (INTEGER DEFAULT 0)
+        - download_count (INTEGER DEFAULT 0)
+        - is_featured (INTEGER DEFAULT 0)
+        - is_public (INTEGER DEFAULT 1)
+        - share_token (TEXT UNIQUE)
+        - created_at, updated_at (DATETIME)
+        - INDEXES: category_id, work_type_id, is_featured
+        - FTS5 virtual table for search (title, description, author_name)
+      </works>
+
+      <users>
+        - id (INTEGER PRIMARY KEY)
+        - google_id (TEXT UNIQUE NOT NULL)
+        - email (TEXT UNIQUE NOT NULL)
+        - name (TEXT)
+        - avatar_url (TEXT)
+        - role (TEXT DEFAULT 'user', CHECK IN ('admin', 'user', 'guest'))
+        - notify_new_works (INTEGER DEFAULT 0)
+        - notify_comments (INTEGER DEFAULT 1)
+        - last_login (DATETIME)
+        - created_at (DATETIME)
+      </users>
+
+      <votes>
+        - id (INTEGER PRIMARY KEY)
+        - work_id (INTEGER, FK to works ON DELETE CASCADE)
+        - user_id (INTEGER, FK to users ON DELETE CASCADE)
+        - stars (INTEGER, CHECK 0-5)
+        - created_at (DATETIME)
+        - UNIQUE(work_id, user_id)
+        - INDEX: work_id
+      </votes>
+
+      <comments>
+        - id (INTEGER PRIMARY KEY)
+        - work_id (INTEGER, FK to works ON DELETE CASCADE)
+        - user_id (INTEGER, FK to users ON DELETE CASCADE)
+        - parent_id (INTEGER, self-reference for replies)
+        - content (TEXT NOT NULL)
+        - is_deleted (INTEGER DEFAULT 0)
+        - created_at, updated_at (DATETIME)
+        - INDEX: work_id
+      </comments>
+
+      <favorites>
+        - id (INTEGER PRIMARY KEY)
+        - user_id (INTEGER, FK to users ON DELETE CASCADE)
+        - work_id (INTEGER, FK to works ON DELETE CASCADE)
+        - created_at (DATETIME)
+        - UNIQUE(user_id, work_id)
+      </favorites>
+
+      <activity_logs>
+        - id (INTEGER PRIMARY KEY)
+        - work_id (INTEGER, FK to works ON DELETE CASCADE)
+        - user_id (INTEGER, FK to users, nullable)
+        - action (TEXT, CHECK IN ('view', 'download', 'share'))
+        - ip_address (TEXT)
+        - user_agent (TEXT)
+        - created_at (DATETIME)
+        - INDEXES: work_id, created_at
+      </activity_logs>
+
+      <config>
+        - key (TEXT PRIMARY KEY)
+        - value (TEXT)
+        - description (TEXT)
+        - updated_at (DATETIME)
+        - Default entries: google_shared_drive_id, google_shared_drive_url, allowed_domain, site_name, site_description, items_per_page, allow_guest_view, require_approval, smtp_host, smtp_port, smtp_user, smtp_pass
+      </config>
+    </tables>
+  </database_schema>
+
+  <api_endpoints_summary>
+    <authentication>
+      - GET /auth/google - Initiate Google OAuth flow
+      - GET /auth/google/callback - OAuth callback handler
+      - POST /auth/logout - Logout user
+      - GET /auth/me - Get current user info
+    </authentication>
+
+    <works>
+      - GET /api/works - List works (filters, pagination)
+      - GET /api/works/search?q= - Full-text search
+      - GET /api/works/featured - Get featured works
+      - GET /api/works/:id - Get work details
+      - POST /api/works/:id/view - Record view, increment count
+      - GET /api/works/:id/download - Get download URL, increment count
+      - GET /api/works/:id/related - Get related works
+      - GET /api/works/share/:token - Access shared work by token
+    </works>
+
+    <voting_and_comments>
+      - POST /api/works/:id/vote - Submit/update vote (0-5 stars)
+      - DELETE /api/works/:id/vote - Remove vote
+      - GET /api/works/:id/comments - List comments
+      - POST /api/works/:id/comments - Add comment
+      - PUT /api/comments/:id - Edit comment
+      - DELETE /api/comments/:id - Delete comment
+    </voting_and_comments>
+
+    <favorites>
+      - GET /api/favorites - List user's favorites
+      - POST /api/works/:id/favorite - Add to favorites
+      - DELETE /api/works/:id/favorite - Remove from favorites
+    </favorites>
+
+    <taxonomies>
+      - GET /api/categories - List all categories
+      - GET /api/tags - List all tags
+      - GET /api/work-types - List work types
+    </taxonomies>
+
+    <admin_config>
+      - GET /admin/config - Get system configuration
+      - PUT /admin/config - Update configuration
+    </admin_config>
+
+    <admin_works>
+      - POST /admin/works - Create new work
+      - PUT /admin/works/:id - Update work
+      - DELETE /admin/works/:id - Delete work
+      - POST /admin/works/:id/feature - Toggle featured status
+      - POST /admin/works/import - Bulk import from Drive folder
+    </admin_works>
+
+    <admin_categories>
+      - POST /admin/categories - Create category
+      - PUT /admin/categories/:id - Update category
+      - DELETE /admin/categories/:id - Delete category
+    </admin_categories>
+
+    <admin_tags>
+      - POST /admin/tags - Create tag
+      - PUT /admin/tags/:id - Update tag
+      - DELETE /admin/tags/:id - Delete tag
+    </admin_tags>
+
+    <admin_users>
+      - GET /admin/users - List users
+      - PUT /admin/users/:id/role - Change user role
+    </admin_users>
+
+    <admin_analytics>
+      - GET /admin/analytics - Get analytics data
+      - GET /admin/export/:type - Export data (csv/pdf)
+    </admin_analytics>
+  </api_endpoints_summary>
+
+  <ui_layout>
+    <main_structure>
+      - Header: Logo, search bar, navigation links, user menu/login button
+      - Sidebar (admin): Navigation menu for admin sections
+      - Main content area: Dynamic content based on route
+      - Footer: Site info, links, copyright
+    </main_structure>
+
+    <public_screens>
+      <home>
+        - Featured works carousel/slider
+        - Recent works section (grid)
+        - Top-rated works section (grid)
+        - Category quick links
+        - Search bar prominently displayed
+      </home>
+      <browse>
+        - Filter sidebar (categories, types, tags, year)
+        - Grid/list view toggle
+        - Sort dropdown (date, rating, views, downloads)
+        - Pagination controls
+        - Work cards with thumbnail, title, author, rating, views
+      </browse>
+      <search_results>
+        - Search query display
+        - Result count
+        - Highlighted search terms in results
+        - Same layout as browse
+      </search_results>
+      <work_detail>
+        - PDF viewer (main area)
+        - Sidebar: metadata, rating widget, download button, share button
+        - Tabs: Description, Comments, Related Works
+        - Vote widget (star selector)
+        - Comments section with reply threading
+      </work_detail>
+      <user_profile>
+        - User info header
+        - Tabs: Favorites, My Votes, My Comments
+        - Notification preferences
+      </user_profile>
+    </public_screens>
+
+    <admin_screens>
+      <dashboard>
+        - Stats cards (total works, views, downloads, users)
+        - Trend charts (line/bar)
+        - Top works tables
+        - Recent activity list
+      </dashboard>
+      <settings>
+        - Google Drive configuration section
+        - Domain restriction settings
+        - Site info (name, description)
+        - Display settings (items per page)
+        - Email/SMTP configuration
+      </settings>
+      <manage_works>
+        - Data table with search, filters
+        - Bulk actions (delete, feature)
+        - Import button (opens Drive folder browser)
+        - Add/Edit work modal/page
+      </manage_works>
+      <manage_categories>
+        - Tree view with drag-drop reordering
+        - Inline edit for names
+        - Add subcategory option
+        - Delete with confirmation
+      </manage_categories>
+      <manage_tags>
+        - Table/grid of tags
+        - Color picker in edit mode
+        - Usage count displayed
+        - Delete with confirmation
+      </manage_tags>
+      <manage_users>
+        - User table with search
+        - Role dropdown to change roles
+        - Last login display
+        - Disable/enable toggle
+      </manage_users>
+      <analytics>
+        - Date range selector
+        - Multiple chart types
+        - Export buttons (CSV, PDF)
+        - Detailed breakdown tables
+      </analytics>
+    </admin_screens>
+  </ui_layout>
+
+  <design_system>
+    <color_palette>
+      - Primary: Blue (#3B82F6) - actions, links, highlights
+      - Secondary: Gray (#6B7280) - secondary text, borders
+      - Success: Green (#10B981) - success messages, positive actions
+      - Warning: Yellow (#F59E0B) - warnings, caution
+      - Error: Red (#EF4444) - errors, destructive actions
+      - Background: White (#FFFFFF) / Dark (#1F2937 for dark mode)
+      - Surface: Gray-50 (#F9FAFB) - cards, elevated surfaces
+    </color_palette>
+    <typography>
+      - Font: Inter (sans-serif) or system font stack
+      - Headings: Bold, larger sizes
+      - Body: Regular, 16px base
+      - Monospace for code/IDs: JetBrains Mono or similar
+    </typography>
+    <components>
+      - Using shadcn/ui component library
+      - Consistent border radius (rounded-lg)
+      - Subtle shadows for elevation
+      - Smooth transitions and animations
+    </components>
+  </design_system>
+
+  <implementation_steps>
+    <step number="1">
+      <title>Core Setup & Authentication</title>
+      <tasks>
+        - Initialize React + Vite frontend project
+        - Initialize Node.js + Express backend
+        - Set up SQLite database with all schemas
+        - Implement Google OAuth 2.0 authentication
+        - Create user roles and session management
+        - Basic routing and layout structure
+      </tasks>
+    </step>
+    <step number="2">
+      <title>Google Drive Integration & Works Core</title>
+      <tasks>
+        - Integrate Google Drive API
+        - Implement Shared Drive connection and validation
+        - Create works CRUD operations
+        - Implement bulk import from Drive folders
+        - Thumbnail generation
+        - Basic works listing and detail pages
+      </tasks>
+    </step>
+    <step number="3">
+      <title>PDF Viewer & Content Display</title>
+      <tasks>
+        - Integrate PDF.js for in-app viewing
+        - Implement view count tracking
+        - Download functionality with counter
+        - Responsive PDF viewer
+        - Work detail page with metadata
+      </tasks>
+    </step>
+    <step number="4">
+      <title>Search, Browse & Filtering</title>
+      <tasks>
+        - Implement full-text search with FTS5
+        - Category filtering (hierarchical)
+        - Tag filtering (multi-select)
+        - Work type and year filters
+        - Sorting options
+        - Grid/list view toggle
+        - Pagination
+      </tasks>
+    </step>
+    <step number="5">
+      <title>Voting & Comments</title>
+      <tasks>
+        - Star rating widget (0-5)
+        - Vote submission and update
+        - Comments CRUD
+        - Threaded replies
+        - Comment moderation
+      </tasks>
+    </step>
+    <step number="6">
+      <title>User Features</title>
+      <tasks>
+        - Favorites/bookmarks functionality
+        - User profile page
+        - Shareable links generation
+        - Related works algorithm
+        - Featured works carousel
+      </tasks>
+    </step>
+    <step number="7">
+      <title>Admin Dashboard & Management</title>
+      <tasks>
+        - Admin dashboard with statistics
+        - Analytics charts (Recharts)
+        - Categories management with drag-drop
+        - Tags management with color picker
+        - Work types management
+        - User management
+        - System configuration
+      </tasks>
+    </step>
+    <step number="8">
+      <title>Notifications & Export</title>
+      <tasks>
+        - Email notification system (Nodemailer)
+        - Notification preferences
+        - CSV export functionality
+        - PDF report generation
+      </tasks>
+    </step>
+    <step number="9">
+      <title>Polish & Deployment</title>
+      <tasks>
+        - Responsive design for all screens
+        - Accessibility improvements
+        - Performance optimization
+        - Security hardening
+        - Error handling and loading states
+        - Final testing
+        - Deployment configuration
+      </tasks>
+    </step>
+  </implementation_steps>
+
+  <success_criteria>
+    <functionality>
+      - All 20 core features fully operational
+      - Google Drive integration working seamlessly
+      - PDF viewing works on desktop and mobile
+      - Search returns accurate, relevant results
+      - Voting and comments persist correctly
+      - Admin can manage all content and users
+      - Authentication with optional domain restriction works
+    </functionality>
+    <user_experience>
+      - Fast page loads (under 3 seconds)
+      - Intuitive navigation
+      - Clear feedback for all actions
+      - Responsive on desktop, tablet, and mobile
+      - Accessible to screen readers
+    </user_experience>
+    <technical_quality>
+      - No mock data - all data from SQLite database
+      - Secure authentication and authorization
+      - Input validation on client and server
+      - Graceful error handling
+      - Clean, maintainable code structure
+    </technical_quality>
+    <design_polish>
+      - Consistent visual design using shadcn/ui
+      - Professional appearance suitable for educational institution
+      - Loading states and animations
+      - Empty states with helpful messages
+    </design_polish>
+  </success_criteria>
+
+  <api_response_format>
+    <success>
+      {
+        "success": true,
+        "data": { ... },
+        "meta": {
+          "page": 1,
+          "per_page": 12,
+          "total": 156,
+          "total_pages": 13
+        }
+      }
+    </success>
+    <error>
+      {
+        "success": false,
+        "error": {
+          "code": "ERROR_CODE",
+          "message": "Human-readable error message"
+        }
+      }
+    </error>
+  </api_response_format>
+
+  <environment_variables>
+    NODE_ENV=production
+    PORT=3000
+    APP_URL=https://archive.example.com
+    DATABASE_PATH=./data/archive.db
+    GOOGLE_CLIENT_ID=xxx
+    GOOGLE_CLIENT_SECRET=xxx
+    GOOGLE_CALLBACK_URL=https://archive.example.com/auth/google/callback
+    GOOGLE_SHARED_DRIVE_ID=xxx
+    SESSION_SECRET=xxx
+    SMTP_HOST=smtp.example.com
+    SMTP_PORT=587
+    SMTP_USER=xxx
+    SMTP_PASS=xxx
+  </environment_variables>
+</project_specification>

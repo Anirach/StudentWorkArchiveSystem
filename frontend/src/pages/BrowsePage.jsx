@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 
 export default function BrowsePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [works, setWorks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
@@ -15,12 +16,7 @@ export default function BrowsePage() {
   const categoryFilter = searchParams.get('category') || '';
   const sortBy = searchParams.get('sort') || 'date';
 
-  useEffect(() => {
-    fetchWorks();
-    fetchFilters();
-  }, [searchParams]);
-
-  const fetchWorks = async () => {
+  const fetchWorks = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -40,7 +36,16 @@ export default function BrowsePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, sortBy, searchQuery, categoryFilter]);
+
+  // Fetch works whenever location changes (handles back button)
+  useEffect(() => {
+    fetchWorks();
+  }, [location.key, fetchWorks]);
+
+  useEffect(() => {
+    fetchFilters();
+  }, []);
 
   const fetchFilters = async () => {
     try {

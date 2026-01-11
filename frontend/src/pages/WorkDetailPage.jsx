@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import PdfViewer from '../components/PdfViewer';
 
 export default function WorkDetailPage() {
   const { id, token } = useParams();
@@ -112,8 +113,11 @@ export default function WorkDetailPage() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* PDF Viewer */}
         <main className="flex-1">
-          <div className="aspect-[4/3] bg-muted rounded-lg flex items-center justify-center mb-6">
-            <p className="text-muted-foreground">PDF Viewer will be implemented here</p>
+          <div className="min-h-[500px] mb-6">
+            <PdfViewer
+              fileUrl={work.file_url}
+              googleFileId={work.google_file_id}
+            />
           </div>
 
           {/* Tabs */}
