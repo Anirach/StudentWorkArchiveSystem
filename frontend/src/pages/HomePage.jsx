@@ -25,7 +25,7 @@ export default function HomePage() {
 
   const fetchFeaturedWorks = async () => {
     try {
-      const response = await fetch('/api/works?featured=true&limit=6');
+      const response = await fetch('/api/works/featured');
       const data = await response.json();
       if (data.success) setFeaturedWorks(data.data || []);
     } catch (err) {
