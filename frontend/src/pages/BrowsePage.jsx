@@ -8,6 +8,7 @@ export default function BrowsePage() {
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [meta, setMeta] = useState({ page: 1, total_pages: 1, total: 0 });
 
@@ -18,6 +19,7 @@ export default function BrowsePage() {
 
   const fetchWorks = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams({
         page: currentPage,
@@ -30,9 +32,12 @@ export default function BrowsePage() {
       if (data.success) {
         setWorks(data.data);
         if (data.meta) setMeta(data.meta);
+      } else {
+        setError('Failed to load works. Please try again.');
       }
-    } catch (error) {
-      console.error('Failed to fetch works:', error);
+    } catch (err) {
+      console.error('Failed to fetch works:', err);
+      setError('Unable to connect to the server. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -163,6 +168,20 @@ export default function BrowsePage() {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 border rounded-lg bg-red-50">
+              <svg className="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <p className="text-red-600 font-medium mb-2">Something went wrong</p>
+              <p className="text-red-500 text-sm mb-4">{error}</p>
+              <button
+                onClick={fetchWorks}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+              >
+                Try Again
+              </button>
             </div>
           ) : works.length > 0 ? (
             <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
