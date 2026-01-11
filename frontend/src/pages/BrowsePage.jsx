@@ -7,6 +7,7 @@ export default function BrowsePage() {
   const [works, setWorks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
+  const [academicYears, setAcademicYears] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
@@ -17,18 +18,29 @@ export default function BrowsePage() {
   const searchQuery = searchParams.get('q') || '';
   const categoryFilter = searchParams.get('category') || '';
   const tagFilter = searchParams.get('tag') || '';
+  const yearFilter = searchParams.get('year') || '';
   const sortBy = searchParams.get('sort') || 'date';
 
   const fetchWorks = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Parse sort value to extract sort column and order
+      let sortColumn = sortBy;
+      let sortOrder = 'desc';
+      if (sortBy === 'date_asc') {
+        sortColumn = 'date';
+        sortOrder = 'asc';
+      }
+
       const params = new URLSearchParams({
         page: currentPage,
-        sort: sortBy,
+        sort: sortColumn,
+        order: sortOrder,
         ...(searchQuery && { q: searchQuery }),
         ...(categoryFilter && { category_id: categoryFilter }),
-        ...(tagFilter && { tag_id: tagFilter })
+        ...(tagFilter && { tag_id: tagFilter }),
+        ...(yearFilter && { academic_year: yearFilter })
       });
       const response = await fetch(`/api/works?${params}`);
       const data = await response.json();
@@ -44,7 +56,7 @@ export default function BrowsePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, sortBy, searchQuery, categoryFilter, tagFilter]);
+  }, [currentPage, sortBy, searchQuery, categoryFilter, tagFilter, yearFilter]);
 
   // Fetch works whenever URL parameters change (handles back button)
   useEffect(() => {
@@ -78,13 +90,15 @@ export default function BrowsePage() {
 
   const fetchFilters = async () => {
     try {
-      const [catRes, tagRes] = await Promise.all([
+      const [catRes, tagRes, yearsRes] = await Promise.all([
         fetch('/api/categories'),
-        fetch('/api/tags')
+        fetch('/api/tags'),
+        fetch('/api/works/years')
       ]);
-      const [catData, tagData] = await Promise.all([catRes.json(), tagRes.json()]);
+      const [catData, tagData, yearsData] = await Promise.all([catRes.json(), tagRes.json(), yearsRes.json()]);
       if (catData.success) setCategories(catData.data);
       if (tagData.success) setTags(tagData.data);
+      if (yearsData.success) setAcademicYears(yearsData.data);
     } catch (error) {
       console.error('Failed to fetch filters:', error);
     }
@@ -102,12 +116,13 @@ export default function BrowsePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <h1 className="sr-only">Browse Works</h1>
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
         <aside className="w-full lg:w-64 shrink-0">
           <div className="sticky top-24 space-y-6">
             <div>
-              <h3 className="font-semibold mb-3">Categories</h3>
+              <h2 className="font-semibold mb-3">Categories</h2>
               <div className="space-y-2">
                 {categories.map(cat => (
                   <button
@@ -125,7 +140,7 @@ export default function BrowsePage() {
               </div>
             </div>
             <div>
-              <h3 className="font-semibold mb-3">Tags</h3>
+              <h2 className="font-semibold mb-3">Tags</h2>
               <div className="flex flex-wrap gap-2">
                 {tags.map(tag => (
                   <button
@@ -143,6 +158,26 @@ export default function BrowsePage() {
                 ))}
               </div>
             </div>
+            {academicYears.length > 0 && (
+              <div>
+                <h2 className="font-semibold mb-3">Academic Year</h2>
+                <div className="space-y-2">
+                  {academicYears.map(year => (
+                    <button
+                      key={year}
+                      onClick={() => {
+                        searchParams.set('year', year);
+                        searchParams.set('page', '1');
+                        setSearchParams(searchParams);
+                      }}
+                      className={`block w-full text-left px-3 py-2 rounded text-sm hover:bg-accent ${yearFilter === String(year) ? 'bg-primary text-primary-foreground' : ''}`}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               onClick={handleClearFilters}
               className="w-full px-4 py-2 border rounded text-sm hover:bg-accent"
@@ -166,6 +201,7 @@ export default function BrowsePage() {
                 className="h-10 px-3 rounded border bg-background text-sm"
               >
                 <option value="date">Newest First</option>
+                <option value="date_asc">Oldest First</option>
                 <option value="rating">Highest Rated</option>
                 <option value="views">Most Viewed</option>
                 <option value="downloads">Most Downloaded</option>
@@ -176,7 +212,7 @@ export default function BrowsePage() {
                   className={`p-2 ${viewMode === 'grid' ? 'bg-accent' : ''}`}
                   aria-label="Grid view"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                   </svg>
                 </button>
@@ -185,7 +221,7 @@ export default function BrowsePage() {
                   className={`p-2 ${viewMode === 'list' ? 'bg-accent' : ''}`}
                   aria-label="List view"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
                 </button>
@@ -199,7 +235,7 @@ export default function BrowsePage() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : error ? (
-            <div className="text-center py-12 border rounded-lg bg-red-50">
+            <div className="text-center py-12 border rounded-lg bg-red-50" role="alert">
               <svg className="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
@@ -224,6 +260,15 @@ export default function BrowsePage() {
                   <div className="p-4">
                     <h3 className="font-semibold group-hover:text-primary line-clamp-2">{work.title}</h3>
                     <p className="text-sm text-muted-foreground">{work.author_name}</p>
+                    {work.avg_rating !== null && work.vote_count > 0 && (
+                      <div className="flex items-center gap-1 mt-2">
+                        <svg className="w-4 h-4 text-yellow-500 fill-current" viewBox="0 0 24 24">
+                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span className="text-sm font-medium">{work.avg_rating?.toFixed(1)}</span>
+                        <span className="text-xs text-muted-foreground">({work.vote_count})</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                       <span>{work.view_count} views</span>
                       <span>{work.download_count} downloads</span>
