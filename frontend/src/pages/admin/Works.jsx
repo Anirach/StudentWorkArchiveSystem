@@ -41,6 +41,13 @@ function WorkFormModal({ work, onClose, onSave }) {
     }
   }, [isDirty, onClose]);
 
+  // Handle reset to defaults
+  const handleReset = useCallback(() => {
+    setFormData(initialFormData.current);
+    setErrors({});
+    setIsDirty(false);
+  }, []);
+
   // Add beforeunload listener to warn about unsaved changes on page refresh/close
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -352,6 +359,14 @@ function WorkFormModal({ work, onClose, onSave }) {
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4 border-t">
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={!isDirty}
+              className="px-4 py-2 border rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Reset
+            </button>
             <button
               type="button"
               onClick={handleClose}
