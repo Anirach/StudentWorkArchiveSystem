@@ -60,13 +60,39 @@ router.get('/analytics', (req, res) => {
       LIMIT 10
     `).all();
 
+    // Get trend data from activity_logs (views and downloads over time)
+    const trendData = db.prepare(`
+      SELECT
+        DATE(created_at) as date,
+        SUM(CASE WHEN action = 'view' THEN 1 ELSE 0 END) as views,
+        SUM(CASE WHEN action = 'download' THEN 1 ELSE 0 END) as downloads
+      FROM activity_logs
+      WHERE created_at >= datetime('now', '-${daysAgo} days')
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `).all();
+
+    // Get category distribution (works per category)
+    const categoryDistribution = db.prepare(`
+      SELECT
+        c.name,
+        COUNT(w.id) as count
+      FROM categories c
+      LEFT JOIN works w ON c.id = w.category_id
+      GROUP BY c.id
+      HAVING count > 0
+      ORDER BY count DESC
+    `).all();
+
     res.success({
       totalWorks,
       totalViews,
       totalDownloads,
       totalUsers,
       topWorks,
-      topRated
+      topRated,
+      trendData,
+      categoryDistribution
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);
@@ -334,6 +360,32 @@ router.post('/works/:id/feature', (req, res) => {
 });
 
 // === CATEGORIES ===
+
+// PUT /admin/categories/reorder - Reorder categories (must be before :id route)
+router.put('/categories/reorder', (req, res) => {
+  try {
+    const { categories } = req.body;
+
+    if (!Array.isArray(categories)) {
+      return res.error('Categories array is required', 'VALIDATION_ERROR', 400);
+    }
+
+    const updateStmt = db.prepare('UPDATE categories SET sort_order = ? WHERE id = ?');
+
+    const updateMany = db.transaction((items) => {
+      for (const item of items) {
+        updateStmt.run(item.sort_order, item.id);
+      }
+    });
+
+    updateMany(categories);
+
+    res.success({ message: 'Categories reordered successfully' });
+  } catch (error) {
+    console.error('Error reordering categories:', error);
+    res.error('Failed to reorder categories', 'ERROR', 500);
+  }
+});
 
 // POST /admin/categories - Create category
 router.post('/categories', (req, res) => {
@@ -834,6 +886,165 @@ router.get('/export/:type', (req, res) => {
   } catch (error) {
     console.error('Error exporting:', error);
     res.error('Export failed', 'ERROR', 500);
+  }
+});
+
+// === BULK IMPORT ===
+
+// POST /admin/works/import - Bulk import works from Drive folder
+router.post('/works/import', (req, res) => {
+  try {
+    const { folder_id, files } = req.body;
+
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      return res.error('No files selected for import', 'VALIDATION_ERROR', 400);
+    }
+
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    const insertStmt = db.prepare(`
+      INSERT INTO works (
+        title, description, author_name, author_email, academic_year,
+        work_type_id, category_id, google_file_id, file_url, thumbnail_url,
+        file_size, page_count, is_featured, is_public, share_token,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
+
+    for (const file of files) {
+      try {
+        // Generate share token
+        const share_token = crypto.randomBytes(16).toString('hex');
+
+        // Extract metadata from filename (e.g., "Author Name - Title.pdf")
+        let title = file.name || 'Untitled';
+        let author_name = '';
+
+        // Try to parse "Author - Title" format
+        const match = title.match(/^(.+?)\s*[-–]\s*(.+)$/);
+        if (match) {
+          author_name = match[1].trim();
+          title = match[2].trim();
+        }
+
+        // Remove file extension from title
+        title = title.replace(/\.(pdf|doc|docx|ppt|pptx)$/i, '');
+
+        const result = insertStmt.run(
+          title,
+          file.description || `Imported from Google Drive folder: ${folder_id}`,
+          author_name || file.author_name || null,
+          file.author_email || null,
+          file.academic_year || new Date().getFullYear().toString(),
+          file.work_type_id || null,
+          file.category_id || null,
+          file.id, // Google file ID
+          file.webViewLink || null,
+          file.thumbnailLink || null,
+          file.size || null,
+          file.page_count || null,
+          0, // is_featured
+          1, // is_public
+          share_token
+        );
+
+        results.success.push({
+          id: result.lastInsertRowid,
+          name: file.name,
+          title
+        });
+      } catch (err) {
+        console.error('Error importing file:', file.name, err);
+        results.failed.push({
+          name: file.name,
+          error: err.message
+        });
+      }
+    }
+
+    res.success({
+      message: `Imported ${results.success.length} of ${files.length} files`,
+      imported: results.success.length,
+      failed: results.failed.length,
+      results
+    });
+  } catch (error) {
+    console.error('Error in bulk import:', error);
+    res.error('Failed to import works', 'ERROR', 500);
+  }
+});
+
+// GET /admin/drive/files - List files from Drive folder (simulated for development)
+router.get('/drive/files', (req, res) => {
+  try {
+    const { folder_id } = req.query;
+
+    if (!folder_id) {
+      return res.error('Folder ID is required', 'VALIDATION_ERROR', 400);
+    }
+
+    // In development mode, return simulated Drive files
+    // In production, this would use Google Drive API
+    const simulatedFiles = [
+      {
+        id: `file_${folder_id}_1`,
+        name: 'John Doe - Machine Learning Project Report.pdf',
+        mimeType: 'application/pdf',
+        size: 2457600,
+        createdTime: new Date().toISOString(),
+        webViewLink: `https://drive.google.com/file/d/file_${folder_id}_1/view`,
+        thumbnailLink: null
+      },
+      {
+        id: `file_${folder_id}_2`,
+        name: 'Jane Smith - Web Application Development.pdf',
+        mimeType: 'application/pdf',
+        size: 1843200,
+        createdTime: new Date().toISOString(),
+        webViewLink: `https://drive.google.com/file/d/file_${folder_id}_2/view`,
+        thumbnailLink: null
+      },
+      {
+        id: `file_${folder_id}_3`,
+        name: 'Student Work - IoT Smart Home System.pdf',
+        mimeType: 'application/pdf',
+        size: 3145728,
+        createdTime: new Date().toISOString(),
+        webViewLink: `https://drive.google.com/file/d/file_${folder_id}_3/view`,
+        thumbnailLink: null
+      },
+      {
+        id: `file_${folder_id}_4`,
+        name: 'Research Team - Data Analysis Final Report.pdf',
+        mimeType: 'application/pdf',
+        size: 4194304,
+        createdTime: new Date().toISOString(),
+        webViewLink: `https://drive.google.com/file/d/file_${folder_id}_4/view`,
+        thumbnailLink: null
+      },
+      {
+        id: `file_${folder_id}_5`,
+        name: 'Alice Brown - Mobile App Design Presentation.pdf',
+        mimeType: 'application/pdf',
+        size: 5242880,
+        createdTime: new Date().toISOString(),
+        webViewLink: `https://drive.google.com/file/d/file_${folder_id}_5/view`,
+        thumbnailLink: null
+      }
+    ];
+
+    res.success({
+      folderId: folder_id,
+      files: simulatedFiles,
+      isSimulated: true,
+      message: 'Development mode: Using simulated files. Connect Google Drive API for real files.'
+    });
+  } catch (error) {
+    console.error('Error listing drive files:', error);
+    res.error('Failed to list drive files', 'ERROR', 500);
   }
 });
 

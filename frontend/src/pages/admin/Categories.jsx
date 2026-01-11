@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useToast } from '../../context/ToastContext';
 
 export default function AdminCategories() {
@@ -9,6 +9,9 @@ export default function AdminCategories() {
   const [newName, setNewName] = useState('');
   const [newParentId, setNewParentId] = useState('');
   const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverItem, setDragOverItem] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -113,17 +116,151 @@ export default function AdminCategories() {
     }
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e, category) => {
+    setDraggedItem(category);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', category.id.toString());
+    // Add a slight delay to show the drag preview
+    setTimeout(() => {
+      e.target.style.opacity = '0.5';
+    }, 0);
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const handleDragOver = (e, category) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedItem && draggedItem.id !== category.id) {
+      // Only allow reordering within the same level (both parents or same parent_id)
+      if (draggedItem.parent_id === category.parent_id) {
+        setDragOverItem(category);
+      }
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    setDragOverItem(null);
+  };
+
+  const handleDrop = async (e, targetCategory) => {
+    e.preventDefault();
+
+    if (!draggedItem || draggedItem.id === targetCategory.id) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    // Only allow reordering within the same level
+    if (draggedItem.parent_id !== targetCategory.parent_id) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    // Get categories at the same level
+    const sameLevelCategories = categories.filter(c => c.parent_id === draggedItem.parent_id);
+
+    // Find indices
+    const draggedIndex = sameLevelCategories.findIndex(c => c.id === draggedItem.id);
+    const targetIndex = sameLevelCategories.findIndex(c => c.id === targetCategory.id);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    // Reorder the array
+    const reordered = [...sameLevelCategories];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    reordered.splice(targetIndex, 0, removed);
+
+    // Create the update payload with new sort_order values
+    const updates = reordered.map((cat, index) => ({
+      id: cat.id,
+      sort_order: index
+    }));
+
+    // Optimistically update UI
+    const newCategories = categories.map(cat => {
+      const update = updates.find(u => u.id === cat.id);
+      if (update) {
+        return { ...cat, sort_order: update.sort_order };
+      }
+      return cat;
+    });
+
+    // Sort by sort_order
+    newCategories.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    setCategories(newCategories);
+
+    setDraggedItem(null);
+    setDragOverItem(null);
+
+    // Save to server
+    setSaving(true);
+    try {
+      const response = await fetch('/api/admin/categories/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ categories: updates })
+      });
+
+      if (response.ok) {
+        success('Categories reordered');
+      } else {
+        error('Failed to save order');
+        fetchCategories(); // Revert on failure
+      }
+    } catch (err) {
+      error('Failed to save order');
+      fetchCategories(); // Revert on failure
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const { parentCategories, childrenMap } = buildHierarchy();
 
   const renderCategory = (category, isChild = false) => {
     const children = childrenMap[category.id] || [];
     const hasChildren = children.length > 0;
     const isExpanded = expandedCategories.has(category.id);
+    const isDragOver = dragOverItem && dragOverItem.id === category.id;
+    const isDragging = draggedItem && draggedItem.id === category.id;
 
     return (
       <div key={category.id}>
-        <div className={`flex items-center justify-between p-4 ${isChild ? 'pl-12 bg-muted/30' : ''}`}>
+        <div
+          draggable={!editingId}
+          onDragStart={(e) => handleDragStart(e, category)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => handleDragOver(e, category)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, category)}
+          className={`flex items-center justify-between p-4 transition-all cursor-grab active:cursor-grabbing
+            ${isChild ? 'pl-12 bg-muted/30' : ''}
+            ${isDragOver ? 'bg-primary/10 border-t-2 border-primary' : ''}
+            ${isDragging ? 'opacity-50' : ''}
+          `}
+        >
           <div className="flex items-center gap-2">
+            {/* Drag handle */}
+            <div className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+              </svg>
+            </div>
+
             {!isChild && hasChildren && (
               <button
                 onClick={() => toggleExpand(category.id)}
@@ -204,7 +341,15 @@ export default function AdminCategories() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Manage Categories</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Manage Categories</h1>
+        {saving && (
+          <span className="text-sm text-muted-foreground flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+            Saving...
+          </span>
+        )}
+      </div>
 
       {/* Add Category */}
       <div className="flex flex-wrap gap-2 mb-6">
@@ -247,7 +392,7 @@ export default function AdminCategories() {
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground">
-        Tip: Select a parent category to create a subcategory. Click the arrow to expand/collapse subcategories.
+        Tip: Drag categories to reorder them. Select a parent category to create a subcategory.
       </p>
     </div>
   );

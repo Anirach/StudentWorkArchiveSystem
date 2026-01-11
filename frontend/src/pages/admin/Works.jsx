@@ -408,11 +408,291 @@ function WorkFormModal({ work, onClose, onSave }) {
   );
 }
 
+// Import from Drive Modal Component
+function ImportFromDriveModal({ onClose, onImport }) {
+  const { success, error } = useToast();
+  const [folderId, setFolderId] = useState('');
+  const [files, setFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState(new Set());
+  const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [workTypes, setWorkTypes] = useState([]);
+  const [defaultCategory, setDefaultCategory] = useState('');
+  const [defaultWorkType, setDefaultWorkType] = useState('');
+
+  useEffect(() => {
+    fetchCategories();
+    fetchWorkTypes();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories');
+      const data = await response.json();
+      if (data.success) setCategories(data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch categories');
+    }
+  };
+
+  const fetchWorkTypes = async () => {
+    try {
+      const response = await fetch('/api/work-types');
+      const data = await response.json();
+      if (data.success) setWorkTypes(data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch work types');
+    }
+  };
+
+  const handleBrowseFolder = async () => {
+    if (!folderId.trim()) {
+      error('Please enter a Google Drive folder ID');
+      return;
+    }
+
+    setLoading(true);
+    setFiles([]);
+    setSelectedFiles(new Set());
+
+    try {
+      const response = await fetch(`/api/admin/drive/files?folder_id=${encodeURIComponent(folderId)}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setFiles(data.data.files || []);
+        if (data.data.isSimulated) {
+          success('Loaded simulated files (development mode)');
+        }
+      } else {
+        error(data.error?.message || 'Failed to load files');
+      }
+    } catch (err) {
+      error('Failed to connect to Drive');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleFileSelection = (fileId) => {
+    setSelectedFiles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId);
+      } else {
+        newSet.add(fileId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedFiles.size === files.length) {
+      setSelectedFiles(new Set());
+    } else {
+      setSelectedFiles(new Set(files.map(f => f.id)));
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return 'Unknown';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(2)} MB`;
+  };
+
+  const handleImport = async () => {
+    if (selectedFiles.size === 0) {
+      error('Please select at least one file to import');
+      return;
+    }
+
+    setImporting(true);
+
+    try {
+      const filesToImport = files
+        .filter(f => selectedFiles.has(f.id))
+        .map(f => ({
+          ...f,
+          category_id: defaultCategory || null,
+          work_type_id: defaultWorkType || null
+        }));
+
+      const response = await fetch('/api/admin/works/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          folder_id: folderId,
+          files: filesToImport
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        success(`Successfully imported ${data.data.imported} works`);
+        if (data.data.failed > 0) {
+          error(`${data.data.failed} files failed to import`);
+        }
+        onImport();
+      } else {
+        error(data.error?.message || 'Import failed');
+      }
+    } catch (err) {
+      error('Failed to import files');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-background rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold mb-4">Import from Google Drive</h2>
+
+        {/* Folder ID Input */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Google Drive Folder ID</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={folderId}
+              onChange={(e) => setFolderId(e.target.value)}
+              placeholder="Enter folder ID from Drive URL"
+              className="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+            />
+            <button
+              onClick={handleBrowseFolder}
+              disabled={loading}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Browse'}
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            The folder ID from a Google Drive URL (e.g., from https://drive.google.com/drive/folders/FOLDER_ID)
+          </p>
+        </div>
+
+        {/* Default Settings */}
+        {files.length > 0 && (
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Default Category</label>
+              <select
+                value={defaultCategory}
+                onChange={(e) => setDefaultCategory(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+              >
+                <option value="">None</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Default Work Type</label>
+              <select
+                value={defaultWorkType}
+                onChange={(e) => setDefaultWorkType(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+              >
+                <option value="">None</option>
+                {workTypes.map(type => (
+                  <option key={type.id} value={type.id}>{type.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Files List */}
+        {files.length > 0 && (
+          <div className="border rounded-lg overflow-hidden mb-4">
+            <div className="bg-muted px-4 py-2 flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedFiles.size === files.length && files.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="font-medium">
+                  {selectedFiles.size === files.length ? 'Deselect All' : 'Select All'}
+                </span>
+              </label>
+              <span className="text-sm text-muted-foreground">
+                {selectedFiles.size} of {files.length} selected
+              </span>
+            </div>
+            <div className="max-h-64 overflow-y-auto">
+              {files.map(file => (
+                <label
+                  key={file.id}
+                  className="flex items-center gap-3 px-4 py-3 border-t cursor-pointer hover:bg-muted/50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedFiles.has(file.id)}
+                    onChange={() => toggleFileSelection(file.id)}
+                    className="w-4 h-4 rounded"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{file.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatFileSize(file.size)} • {file.mimeType}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && files.length === 0 && folderId && (
+          <div className="text-center py-8 text-muted-foreground">
+            No files found in this folder. Enter a folder ID and click Browse to load files.
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border rounded-lg hover:bg-accent"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={importing || selectedFiles.size === 0}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+          >
+            {importing ? 'Importing...' : `Import ${selectedFiles.size} Files`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminWorks() {
   const { success, error } = useToast();
   const [works, setWorks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingWork, setEditingWork] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null); // Work to delete
@@ -528,7 +808,10 @@ export default function AdminWorks() {
           >
             Add Work
           </button>
-          <button className="px-4 py-2 border rounded-lg hover:bg-accent">
+          <button
+            onClick={() => setShowImport(true)}
+            className="px-4 py-2 border rounded-lg hover:bg-accent"
+          >
             Import from Drive
           </button>
           <button
@@ -617,6 +900,14 @@ export default function AdminWorks() {
           work={editingWork}
           onClose={() => { setShowForm(false); setEditingWork(null); }}
           onSave={() => { setShowForm(false); setEditingWork(null); fetchWorks(); }}
+        />
+      )}
+
+      {/* Import from Drive Modal */}
+      {showImport && (
+        <ImportFromDriveModal
+          onClose={() => setShowImport(false)}
+          onImport={() => { setShowImport(false); fetchWorks(); }}
         />
       )}
 

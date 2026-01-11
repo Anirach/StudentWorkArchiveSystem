@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { WorkTypeBadge } from '../components/WorkTypeIcon';
 
 export default function BrowsePage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
   const [works, setWorks] = useState([]);
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
@@ -15,7 +14,6 @@ export default function BrowsePage() {
     return localStorage.getItem('browseViewMode') || 'grid';
   });
   const [meta, setMeta] = useState({ page: 1, total_pages: 1, total: 0 });
-  const isInitialized = useRef(false);
   const [expandedCategories, setExpandedCategories] = useState(new Set());
 
   const currentPage = parseInt(searchParams.get('page') || '1');
@@ -62,37 +60,7 @@ export default function BrowsePage() {
     }
   }, [currentPage, sortBy, searchQuery, categoryFilter, tagFilter, yearFilter]);
 
-  // Fetch works whenever URL parameters change (handles back button)
-  useEffect(() => {
-    fetchWorks();
-  }, [fetchWorks]);
-
-  // Fetch filters on mount and handle pageshow event for bfcache restoration
-  useEffect(() => {
-    const loadFilters = () => {
-      fetchFilters();
-    };
-
-    // Initial load
-    if (!isInitialized.current) {
-      loadFilters();
-      isInitialized.current = true;
-    }
-
-    // Handle browser back/forward navigation (bfcache restoration)
-    const handlePageShow = (event) => {
-      if (event.persisted) {
-        // Page was restored from bfcache, refetch data
-        loadFilters();
-        fetchWorks();
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, [fetchWorks]);
-
-  const fetchFilters = async () => {
+  const fetchFilters = useCallback(async () => {
     try {
       const [catRes, tagRes, yearsRes] = await Promise.all([
         fetch('/api/categories'),
@@ -106,7 +74,38 @@ export default function BrowsePage() {
     } catch (error) {
       console.error('Failed to fetch filters:', error);
     }
-  };
+  }, []);
+
+  // Fetch works whenever URL parameters change
+  useEffect(() => {
+    fetchWorks();
+  }, [fetchWorks]);
+
+  // Fetch filters on mount and when returning to this page
+  useEffect(() => {
+    fetchFilters();
+
+    // Handle browser back/forward navigation and page visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchFilters();
+        fetchWorks();
+      }
+    };
+
+    const handlePopState = () => {
+      fetchFilters();
+      fetchWorks();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [fetchFilters, fetchWorks]);
 
   const handleSort = (sort) => {
     searchParams.set('sort', sort);
