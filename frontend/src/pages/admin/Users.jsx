@@ -13,7 +13,7 @@ export default function AdminUsers() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/admin/users', { credentials: 'include' });
+      const response = await fetch('/api/admin/users', { credentials: 'include' });
       const data = await response.json();
       if (data.success) setUsers(data.data);
     } catch (err) {
@@ -26,7 +26,7 @@ export default function AdminUsers() {
   const handleRoleChange = async (userId, newRole) => {
     if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) return;
     try {
-      const response = await fetch(`/admin/users/${userId}/role`, {
+      const response = await fetch(`/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
