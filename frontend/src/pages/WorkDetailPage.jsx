@@ -18,6 +18,8 @@ export default function WorkDetailPage() {
   const [relatedWorks, setRelatedWorks] = useState([]);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editCommentText, setEditCommentText] = useState('');
+  const [replyingToId, setReplyingToId] = useState(null);
+  const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     fetchWork();
@@ -172,6 +174,37 @@ export default function WorkDetailPage() {
     }
   };
 
+  const handleReply = (commentId) => {
+    setReplyingToId(commentId);
+    setReplyText('');
+  };
+
+  const handleCancelReply = () => {
+    setReplyingToId(null);
+    setReplyText('');
+  };
+
+  const handleSubmitReply = async (parentId) => {
+    if (!replyText.trim()) return;
+    try {
+      const response = await fetch(`/api/works/${id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: replyText, parent_id: parentId })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setReplyingToId(null);
+        setReplyText('');
+        fetchComments();
+        success('Reply posted!');
+      }
+    } catch (err) {
+      error('Failed to post reply');
+    }
+  };
+
   const handleDownload = async () => {
     try {
       const response = await fetch(`/api/works/${id}/download`, {
@@ -310,22 +343,32 @@ export default function WorkDetailPage() {
                           <span className="font-medium">{comment.user_name}</span>
                           <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
                         </div>
-                        {user && user.id === comment.user_id && (
-                          <div className="flex gap-2">
+                        <div className="flex gap-2">
+                          {isAuthenticated && (
                             <button
-                              onClick={() => handleEditComment(comment)}
+                              onClick={() => handleReply(comment.id)}
                               className="text-xs text-muted-foreground hover:text-foreground"
                             >
-                              Edit
+                              Reply
                             </button>
-                            <button
-                              onClick={() => handleDeleteComment(comment.id)}
-                              className="text-xs text-red-500 hover:text-red-700"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
+                          )}
+                          {user && user.id === comment.user_id && (
+                            <>
+                              <button
+                                onClick={() => handleEditComment(comment)}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="text-xs text-red-500 hover:text-red-700"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
                       {editingCommentId === comment.id ? (
                         <div className="space-y-2">
@@ -351,6 +394,57 @@ export default function WorkDetailPage() {
                         </div>
                       ) : (
                         <p className="text-sm">{comment.content}</p>
+                      )}
+
+                      {/* Reply Form */}
+                      {replyingToId === comment.id && (
+                        <div className="mt-3 pl-4 border-l-2 border-muted space-y-2">
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Write a reply..."
+                            className="w-full p-2 border rounded-lg resize-none h-16 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSubmitReply(comment.id)}
+                              className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                            >
+                              Reply
+                            </button>
+                            <button
+                              onClick={handleCancelReply}
+                              className="px-3 py-1 text-sm border rounded hover:bg-accent"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Nested Replies */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="mt-3 pl-4 border-l-2 border-muted space-y-3">
+                          {comment.replies.map(reply => (
+                            <div key={reply.id} className="pt-3">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">{reply.user_name}</span>
+                                  <span className="text-xs text-muted-foreground">{new Date(reply.created_at).toLocaleDateString()}</span>
+                                </div>
+                                {user && user.id === reply.user_id && (
+                                  <button
+                                    onClick={() => handleDeleteComment(reply.id)}
+                                    className="text-xs text-red-500 hover:text-red-700"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-sm">{reply.content}</p>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   ))
