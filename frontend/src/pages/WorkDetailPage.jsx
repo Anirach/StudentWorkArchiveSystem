@@ -241,7 +241,7 @@ export default function WorkDetailPage() {
                   ({work.vote_count || 0} votes)
                 </span>
               </div>
-              <p className="text-2xl font-bold">{work.average_rating?.toFixed(1) || '0.0'}</p>
+              <p className="text-2xl font-bold">{work.avg_rating?.toFixed(1) || '0.0'}</p>
             </div>
 
             {/* Actions */}
