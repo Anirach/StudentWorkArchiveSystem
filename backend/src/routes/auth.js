@@ -119,10 +119,14 @@ router.get('/me', (req, res) => {
 // This allows testing authentication without Google OAuth
 if (process.env.NODE_ENV !== 'production') {
   router.post('/dev-login', (req, res) => {
-    const { role = 'user' } = req.body;
+    const { role = 'user', userId } = req.body;
+
+    // Support both role-based login and specific user ID login
+    const email = userId ? `test-${role}-${userId}@dev.local` : `test-${role}@dev.local`;
+    const name = userId ? `Test ${role.charAt(0).toUpperCase() + role.slice(1)} ${userId}` : `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`;
 
     // Check if test user exists
-    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(`test-${role}@dev.local`);
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 
     if (!user) {
       // Create test user
@@ -132,9 +136,9 @@ if (process.env.NODE_ENV !== 'production') {
       `);
 
       const result = stmt.run(
-        `dev-${role}-${Date.now()}`,
-        `test-${role}@dev.local`,
-        `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        `dev-${role}-${userId || Date.now()}`,
+        email,
+        name,
         null,
         role
       );
