@@ -109,6 +109,29 @@ export default function WorkDetailPage() {
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(`/api/works/${id}/download`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Open Google Drive file or direct URL
+        const fileUrl = data.data.google_file_id
+          ? `https://drive.google.com/file/d/${data.data.google_file_id}/view`
+          : data.data.file_url;
+        if (fileUrl) {
+          window.open(fileUrl, '_blank');
+        }
+        // Refresh work to update download count
+        fetchWork();
+        success('Download started!');
+      }
+    } catch (err) {
+      error('Failed to download file');
+    }
+  };
+
   const handleFavorite = async () => {
     if (!isAuthenticated) {
       error('Please log in to add favorites');
@@ -285,7 +308,10 @@ export default function WorkDetailPage() {
 
             {/* Actions */}
             <div className="space-y-2">
-              <button className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
+              <button
+                onClick={handleDownload}
+                className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+              >
                 Download
               </button>
               <button className="w-full px-4 py-2 border rounded-lg hover:bg-accent">
