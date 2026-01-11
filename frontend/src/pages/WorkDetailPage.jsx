@@ -533,7 +533,18 @@ export default function WorkDetailPage() {
               >
                 Download
               </button>
-              <button className="w-full px-4 py-2 border rounded-lg hover:bg-accent">
+              <button
+                onClick={() => {
+                  if (work.share_token) {
+                    const shareUrl = `${window.location.origin}/share/${work.share_token}`;
+                    navigator.clipboard.writeText(shareUrl);
+                    success('Share link copied to clipboard!');
+                  } else {
+                    error('Share link not available for this work');
+                  }
+                }}
+                className="w-full px-4 py-2 border rounded-lg hover:bg-accent"
+              >
                 Share
               </button>
               {isAuthenticated && (
