@@ -16,6 +16,8 @@ export default function WorkDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [relatedWorks, setRelatedWorks] = useState([]);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState('');
 
   useEffect(() => {
     fetchWork();
@@ -120,6 +122,37 @@ export default function WorkDetailPage() {
     } catch (err) {
       error('Failed to post comment');
     }
+  };
+
+  const handleEditComment = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditCommentText(comment.content);
+  };
+
+  const handleUpdateComment = async (commentId) => {
+    if (!editCommentText.trim()) return;
+    try {
+      const response = await fetch(`/api/works/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: editCommentText })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEditingCommentId(null);
+        setEditCommentText('');
+        fetchComments();
+        success('Comment updated!');
+      }
+    } catch (err) {
+      error('Failed to update comment');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditCommentText('');
   };
 
   const handleDownload = async () => {
@@ -255,11 +288,45 @@ export default function WorkDetailPage() {
                 {comments.length > 0 ? (
                   comments.map(comment => (
                     <div key={comment.id} className="p-4 border rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium">{comment.user_name}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{comment.user_name}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
+                        </div>
+                        {user && user.id === comment.user_id && (
+                          <button
+                            onClick={() => handleEditComment(comment)}
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </div>
-                      <p className="text-sm">{comment.content}</p>
+                      {editingCommentId === comment.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editCommentText}
+                            onChange={(e) => setEditCommentText(e.target.value)}
+                            className="w-full p-2 border rounded-lg resize-none h-20 text-sm"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateComment(comment.id)}
+                              className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-3 py-1 text-sm border rounded hover:bg-accent"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{comment.content}</p>
+                      )}
                     </div>
                   ))
                 ) : (
