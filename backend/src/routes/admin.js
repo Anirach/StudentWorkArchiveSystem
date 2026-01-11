@@ -643,4 +643,99 @@ router.get('/export/:type', (req, res) => {
   }
 });
 
+// === WORK TYPES ===
+
+// GET /admin/work-types - Get all work types
+router.get('/work-types', (req, res) => {
+  try {
+    const workTypes = db.prepare('SELECT * FROM work_types ORDER BY name').all();
+    res.success(workTypes);
+  } catch (error) {
+    console.error('Error fetching work types:', error);
+    res.error('Failed to fetch work types', 'ERROR', 500);
+  }
+});
+
+// POST /admin/work-types - Create a new work type
+router.post('/work-types', (req, res) => {
+  try {
+    const { name, icon = 'file' } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.error('Work type name is required', 'VALIDATION_ERROR', 400);
+    }
+
+    // Check for duplicate
+    const existing = db.prepare('SELECT id FROM work_types WHERE name = ?').get(name.trim());
+    if (existing) {
+      return res.error('Work type already exists', 'ALREADY_EXISTS', 409);
+    }
+
+    const result = db.prepare('INSERT INTO work_types (name, icon) VALUES (?, ?)').run(name.trim(), icon);
+    const workType = db.prepare('SELECT * FROM work_types WHERE id = ?').get(result.lastInsertRowid);
+
+    res.success(workType, { message: 'Work type created successfully' });
+  } catch (error) {
+    console.error('Error creating work type:', error);
+    res.error('Failed to create work type', 'ERROR', 500);
+  }
+});
+
+// PUT /admin/work-types/:id - Update a work type
+router.put('/work-types/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, icon } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.error('Work type name is required', 'VALIDATION_ERROR', 400);
+    }
+
+    // Check if work type exists
+    const existing = db.prepare('SELECT * FROM work_types WHERE id = ?').get(id);
+    if (!existing) {
+      return res.error('Work type not found', 'NOT_FOUND', 404);
+    }
+
+    // Check for duplicate name (excluding current)
+    const duplicate = db.prepare('SELECT id FROM work_types WHERE name = ? AND id != ?').get(name.trim(), id);
+    if (duplicate) {
+      return res.error('Work type name already exists', 'ALREADY_EXISTS', 409);
+    }
+
+    db.prepare('UPDATE work_types SET name = ?, icon = ? WHERE id = ?').run(name.trim(), icon || existing.icon, id);
+    const workType = db.prepare('SELECT * FROM work_types WHERE id = ?').get(id);
+
+    res.success(workType, { message: 'Work type updated successfully' });
+  } catch (error) {
+    console.error('Error updating work type:', error);
+    res.error('Failed to update work type', 'ERROR', 500);
+  }
+});
+
+// DELETE /admin/work-types/:id - Delete a work type
+router.delete('/work-types/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if work type exists
+    const existing = db.prepare('SELECT * FROM work_types WHERE id = ?').get(id);
+    if (!existing) {
+      return res.error('Work type not found', 'NOT_FOUND', 404);
+    }
+
+    // Check if work type is in use
+    const inUse = db.prepare('SELECT COUNT(*) as count FROM works WHERE work_type_id = ?').get(id);
+    if (inUse.count > 0) {
+      return res.error(`Cannot delete work type: ${inUse.count} works are using it`, 'IN_USE', 409);
+    }
+
+    db.prepare('DELETE FROM work_types WHERE id = ?').run(id);
+    res.success({ id: parseInt(id) }, { message: 'Work type deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting work type:', error);
+    res.error('Failed to delete work type', 'ERROR', 500);
+  }
+});
+
 export default router;
