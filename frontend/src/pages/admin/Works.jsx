@@ -8,6 +8,7 @@ export default function AdminWorks() {
   const [showForm, setShowForm] = useState(false);
   const [editingWork, setEditingWork] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // Work to delete
 
   useEffect(() => {
     fetchWorks();
@@ -25,10 +26,18 @@ export default function AdminWorks() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this work?')) return;
+  const handleDeleteClick = (work) => {
+    setDeleteConfirm(work);
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
     try {
-      const response = await fetch(`/admin/works/${id}`, {
+      const response = await fetch(`/api/admin/works/${deleteConfirm.id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -38,12 +47,14 @@ export default function AdminWorks() {
       }
     } catch (err) {
       error('Failed to delete work');
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
   const handleFeature = async (id) => {
     try {
-      const response = await fetch(`/admin/works/${id}/feature`, {
+      const response = await fetch(`/api/admin/works/${id}/feature`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -137,7 +148,7 @@ export default function AdminWorks() {
                         Edit
                       </button>
                       <button
-                        onClick={() => handleDelete(work.id)}
+                        onClick={() => handleDeleteClick(work)}
                         className="px-2 py-1 text-sm border border-red-200 text-red-600 rounded hover:bg-red-50"
                       >
                         Delete
@@ -174,6 +185,32 @@ export default function AdminWorks() {
               </button>
               <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-2">Delete Work</h2>
+            <p className="text-muted-foreground mb-4">
+              Are you sure you want to delete "<span className="font-medium text-foreground">{deleteConfirm.title}</span>"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 border rounded-lg hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
           </div>

@@ -138,8 +138,8 @@ router.post('/works', (req, res) => {
       tags = []
     } = req.body;
 
-    if (!title || !google_file_id) {
-      return res.error('Title and Google file ID are required', 'VALIDATION_ERROR', 400);
+    if (!title) {
+      return res.error('Title is required', 'VALIDATION_ERROR', 400);
     }
 
     // Generate share token

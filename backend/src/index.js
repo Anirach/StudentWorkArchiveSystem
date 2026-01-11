@@ -71,7 +71,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/works', worksRoutes);
-app.use('/admin', adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Placeholder routes for taxonomies
 app.get('/api/categories', (req, res) => {
