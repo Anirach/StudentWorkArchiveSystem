@@ -15,7 +15,7 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/admin/analytics', { credentials: 'include' });
+      const response = await fetch('/api/admin/analytics', { credentials: 'include' });
       const data = await response.json();
       if (data.success) {
         setStats(data.data);
