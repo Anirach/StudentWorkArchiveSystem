@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set PDF.js worker source
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set PDF.js worker source - use local worker from node_modules
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 export default function PdfViewer({ fileUrl, googleFileId }) {
   const canvasRef = useRef(null);
@@ -20,13 +23,13 @@ export default function PdfViewer({ fileUrl, googleFileId }) {
       setError(null);
 
       try {
-        // Use Google Drive preview URL or direct URL
+        // Prefer direct file URL over Google Drive
         let pdfUrl = fileUrl;
-        if (googleFileId) {
+        if (!pdfUrl && googleFileId) {
           pdfUrl = `/api/works/pdf/${googleFileId}`;
         }
 
-        if (!pdfUrl && !googleFileId) {
+        if (!pdfUrl) {
           setError('No PDF URL provided');
           setLoading(false);
           return;
@@ -141,8 +144,23 @@ export default function PdfViewer({ fileUrl, googleFileId }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <span className="text-sm">
-            Page {currentPage} of {totalPages}
+          <span className="text-sm flex items-center gap-1">
+            Page{' '}
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={currentPage}
+              onChange={(e) => {
+                const page = parseInt(e.target.value);
+                if (page >= 1 && page <= totalPages) {
+                  setCurrentPage(page);
+                }
+              }}
+              className="w-12 px-1 py-0.5 text-center border rounded text-sm"
+              aria-label="Page number"
+            />
+            {' '}of {totalPages}
           </span>
           <button
             onClick={goToNextPage}

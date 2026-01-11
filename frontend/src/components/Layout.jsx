@@ -1,9 +1,19 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
   const { user, isAdmin, isAuthenticated, login, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/works?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
   const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
@@ -13,25 +23,27 @@ export default function Layout() {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 font-semibold text-lg">
-            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             <span>Student Work Archive</span>
           </Link>
 
           {/* Search */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
+          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
             <div className="relative w-full">
               <input
                 type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search works..."
                 className="w-full h-10 pl-10 pr-4 rounded-lg border bg-muted/50 focus:bg-background focus:ring-2 focus:ring-primary"
               />
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-          </div>
+          </form>
 
           {/* Navigation */}
           <nav className="flex items-center gap-4">
@@ -89,9 +101,9 @@ export default function Layout() {
 
       {/* Admin Sidebar (shown only on admin routes) */}
       {isAdminRoute && isAdmin ? (
-        <div className="flex">
-          <aside className="w-64 min-h-[calc(100vh-4rem)] border-r bg-muted/30">
-            <nav className="p-4 space-y-1">
+        <div className="flex flex-col md:flex-row">
+          <aside className="w-full md:w-64 md:min-h-[calc(100vh-4rem)] border-b md:border-b-0 md:border-r bg-muted/30">
+            <nav className="p-4 flex flex-wrap md:flex-col gap-1 md:space-y-1">
               <Link
                 to="/admin/dashboard"
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${location.pathname === '/admin' || location.pathname === '/admin/dashboard' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
@@ -149,7 +161,7 @@ export default function Layout() {
               </Link>
             </nav>
           </aside>
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-4 md:p-6 min-w-0 overflow-x-auto">
             <Outlet />
           </main>
         </div>

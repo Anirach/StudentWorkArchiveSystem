@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { isAuthenticated, isAdmin } from './auth.js';
 import crypto from 'crypto';
+import PDFDocument from 'pdfkit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -153,7 +154,7 @@ router.post('/works', (req, res) => {
       tags = []
     } = req.body;
 
-    if (!title) {
+    if (!title || !title.trim()) {
       return res.error('Title is required', 'VALIDATION_ERROR', 400);
     }
 
@@ -217,6 +218,8 @@ router.put('/works/:id', (req, res) => {
       academic_year,
       work_type_id,
       category_id,
+      google_file_id,
+      file_url,
       is_featured,
       is_public,
       tags
@@ -237,6 +240,8 @@ router.put('/works/:id', (req, res) => {
         academic_year = COALESCE(?, academic_year),
         work_type_id = COALESCE(?, work_type_id),
         category_id = COALESCE(?, category_id),
+        google_file_id = COALESCE(?, google_file_id),
+        file_url = COALESCE(?, file_url),
         is_featured = COALESCE(?, is_featured),
         is_public = COALESCE(?, is_public),
         updated_at = datetime('now')
@@ -251,6 +256,8 @@ router.put('/works/:id', (req, res) => {
       toSqlite(academic_year),
       toSqlite(work_type_id, 'int'),
       toSqlite(category_id, 'int'),
+      toSqlite(google_file_id),
+      toSqlite(file_url),
       is_featured !== undefined ? toSqlite(is_featured, 'bool') : null,
       is_public !== undefined ? toSqlite(is_public, 'bool') : null,
       id
@@ -333,7 +340,7 @@ router.post('/categories', (req, res) => {
   try {
     const { name, description, parent_id, sort_order = 0 } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.error('Category name is required', 'VALIDATION_ERROR', 400);
     }
 
@@ -420,7 +427,7 @@ router.post('/tags', (req, res) => {
   try {
     const { name, color = '#6B7280' } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.error('Tag name is required', 'VALIDATION_ERROR', 400);
     }
 
@@ -602,15 +609,32 @@ router.put('/users/:id/status', (req, res) => {
 router.get('/export/:type', (req, res) => {
   try {
     const { type } = req.params;
+    const { category_id, q: searchQuery } = req.query;
 
     if (type === 'csv') {
-      const works = db.prepare(`
+      // Build dynamic query with filters
+      let sql = `
         SELECT w.*, c.name as category_name, wt.name as work_type_name
         FROM works w
         LEFT JOIN categories c ON w.category_id = c.id
         LEFT JOIN work_types wt ON w.work_type_id = wt.id
-        ORDER BY w.created_at DESC
-      `).all();
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (category_id) {
+        sql += ' AND w.category_id = ?';
+        params.push(category_id);
+      }
+
+      if (searchQuery) {
+        sql += ' AND (w.title LIKE ? OR w.author_name LIKE ?)';
+        params.push(`%${searchQuery}%`, `%${searchQuery}%`);
+      }
+
+      sql += ' ORDER BY w.created_at DESC';
+
+      const works = db.prepare(sql).all(...params);
 
       // Generate CSV
       const headers = ['ID', 'Title', 'Author', 'Category', 'Type', 'Views', 'Downloads', 'Created'];
@@ -630,10 +654,180 @@ router.get('/export/:type', (req, res) => {
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=works-export.csv');
       res.send(csv);
+    } else if (type === 'votes') {
+      // Export votes summary
+      const votes = db.prepare(`
+        SELECT
+          v.id,
+          w.title as work_title,
+          u.name as user_name,
+          u.email as user_email,
+          v.stars,
+          v.created_at
+        FROM votes v
+        JOIN works w ON v.work_id = w.id
+        JOIN users u ON v.user_id = u.id
+        ORDER BY v.created_at DESC
+      `).all();
+
+      const headers = ['ID', 'Work Title', 'User', 'Email', 'Stars', 'Date'];
+      const rows = votes.map(v => [
+        v.id,
+        `"${(v.work_title || '').replace(/"/g, '""')}"`,
+        `"${(v.user_name || '').replace(/"/g, '""')}"`,
+        v.user_email || '',
+        v.stars,
+        v.created_at
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=votes-export.csv');
+      res.send(csv);
+    } else if (type === 'activity') {
+      // Export activity logs
+      const activities = db.prepare(`
+        SELECT
+          a.id,
+          w.title as work_title,
+          u.name as user_name,
+          u.email as user_email,
+          a.action,
+          a.ip_address,
+          a.created_at
+        FROM activity_logs a
+        LEFT JOIN works w ON a.work_id = w.id
+        LEFT JOIN users u ON a.user_id = u.id
+        ORDER BY a.created_at DESC
+        LIMIT 1000
+      `).all();
+
+      const headers = ['ID', 'Work Title', 'User', 'Email', 'Action', 'IP Address', 'Date'];
+      const rows = activities.map(a => [
+        a.id,
+        `"${(a.work_title || '').replace(/"/g, '""')}"`,
+        `"${(a.user_name || 'Anonymous').replace(/"/g, '""')}"`,
+        a.user_email || '',
+        a.action,
+        a.ip_address || '',
+        a.created_at
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=activity-export.csv');
+      res.send(csv);
     } else if (type === 'pdf') {
-      // For PDF, we'll just return a text-based report for now
-      // Full PDF generation would require a library like pdfkit
-      res.error('PDF export not yet implemented', 'NOT_IMPLEMENTED', 501);
+      // Generate PDF Analytics Report using pdfkit
+      const doc = new PDFDocument({ margin: 50 });
+
+      // Set response headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=analytics-report.pdf');
+
+      // Pipe the PDF to the response
+      doc.pipe(res);
+
+      // Get analytics data
+      const totalWorks = db.prepare('SELECT COUNT(*) as count FROM works').get().count;
+      const totalViews = db.prepare('SELECT COALESCE(SUM(view_count), 0) as count FROM works').get().count;
+      const totalDownloads = db.prepare('SELECT COALESCE(SUM(download_count), 0) as count FROM works').get().count;
+      const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+      const totalVotes = db.prepare('SELECT COUNT(*) as count FROM votes').get().count;
+      const totalComments = db.prepare('SELECT COUNT(*) as count FROM comments WHERE is_deleted = 0').get().count;
+
+      // Get top viewed works
+      const topViewed = db.prepare(`
+        SELECT title, author_name, view_count
+        FROM works
+        ORDER BY view_count DESC
+        LIMIT 10
+      `).all();
+
+      // Get top rated works
+      const topRated = db.prepare(`
+        SELECT w.title, w.author_name, AVG(v.stars) as avg_rating, COUNT(v.id) as vote_count
+        FROM works w
+        INNER JOIN votes v ON w.id = v.work_id
+        GROUP BY w.id
+        HAVING vote_count > 0
+        ORDER BY avg_rating DESC, vote_count DESC
+        LIMIT 10
+      `).all();
+
+      // Get category distribution
+      const categoryDist = db.prepare(`
+        SELECT c.name, COUNT(w.id) as count
+        FROM categories c
+        LEFT JOIN works w ON c.id = w.category_id
+        GROUP BY c.id
+        ORDER BY count DESC
+      `).all();
+
+      // Title
+      doc.fontSize(24).font('Helvetica-Bold').text('Analytics Report', { align: 'center' });
+      doc.fontSize(12).font('Helvetica').text(`Generated on ${new Date().toLocaleString()}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Summary Statistics
+      doc.fontSize(16).font('Helvetica-Bold').text('Summary Statistics');
+      doc.moveDown(0.5);
+      doc.fontSize(12).font('Helvetica');
+      doc.text(`Total Works: ${totalWorks}`);
+      doc.text(`Total Views: ${totalViews}`);
+      doc.text(`Total Downloads: ${totalDownloads}`);
+      doc.text(`Total Users: ${totalUsers}`);
+      doc.text(`Total Votes: ${totalVotes}`);
+      doc.text(`Total Comments: ${totalComments}`);
+      doc.moveDown(1.5);
+
+      // Top 10 Most Viewed Works
+      doc.fontSize(16).font('Helvetica-Bold').text('Top 10 Most Viewed Works');
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      if (topViewed.length > 0) {
+        topViewed.forEach((work, index) => {
+          doc.text(`${index + 1}. ${work.title} by ${work.author_name || 'Unknown'} - ${work.view_count} views`);
+        });
+      } else {
+        doc.text('No data available');
+      }
+      doc.moveDown(1.5);
+
+      // Top 10 Highest Rated Works
+      doc.fontSize(16).font('Helvetica-Bold').text('Top 10 Highest Rated Works');
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      if (topRated.length > 0) {
+        topRated.forEach((work, index) => {
+          doc.text(`${index + 1}. ${work.title} by ${work.author_name || 'Unknown'} - ${work.avg_rating.toFixed(1)} stars (${work.vote_count} votes)`);
+        });
+      } else {
+        doc.text('No data available');
+      }
+      doc.moveDown(1.5);
+
+      // Category Distribution
+      doc.fontSize(16).font('Helvetica-Bold').text('Category Distribution');
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica');
+      if (categoryDist.length > 0) {
+        categoryDist.forEach(cat => {
+          doc.text(`${cat.name}: ${cat.count} works`);
+        });
+      } else {
+        doc.text('No categories available');
+      }
+
+      // Footer
+      doc.moveDown(2);
+      doc.fontSize(10).font('Helvetica').fillColor('gray')
+        .text('Student Work Archive System - Analytics Report', { align: 'center' });
+
+      // Finalize PDF
+      doc.end();
     } else {
       res.error('Invalid export type', 'VALIDATION_ERROR', 400);
     }

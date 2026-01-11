@@ -19,7 +19,7 @@ export default function AdminAnalytics() {
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch(`/admin/analytics?range=${dateRange}`, {
+      const response = await fetch(`/api/admin/analytics?range=${dateRange}`, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -35,7 +35,7 @@ export default function AdminAnalytics() {
 
   const handleExport = async (type) => {
     try {
-      const response = await fetch(`/admin/export/${type}`, {
+      const response = await fetch(`/api/admin/export/${type}`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -76,16 +76,28 @@ export default function AdminAnalytics() {
             <option value="1y">Last year</option>
           </select>
           <button
+            onClick={() => handleExport('pdf')}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Export PDF
+          </button>
+          <button
             onClick={() => handleExport('csv')}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
           >
-            Export CSV
+            Export Works
           </button>
           <button
-            onClick={() => handleExport('pdf')}
-            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/90"
+            onClick={() => handleExport('votes')}
+            className="px-4 py-2 border rounded-lg hover:bg-accent"
           >
-            Export PDF
+            Export Votes
+          </button>
+          <button
+            onClick={() => handleExport('activity')}
+            className="px-4 py-2 border rounded-lg hover:bg-accent"
+          >
+            Export Activity
           </button>
         </div>
       </div>

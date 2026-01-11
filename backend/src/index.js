@@ -76,6 +76,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from public directory
+app.use('/public', express.static(join(__dirname, '../public')));
+
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/works', worksRoutes);

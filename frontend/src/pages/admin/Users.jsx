@@ -70,8 +70,8 @@ export default function AdminUsers() {
       </div>
 
       {/* Users Table */}
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="border rounded-lg overflow-x-auto">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-muted">
             <tr>
               <th className="text-left px-4 py-3 font-medium">User</th>

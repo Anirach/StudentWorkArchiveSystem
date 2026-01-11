@@ -59,12 +59,19 @@ router.get('/', (req, res) => {
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
-    // Handle tag filtering through a subquery
+    // Handle tag filtering through a subquery (supports multiple tags via comma-separated IDs)
     let fromClause = 'FROM works w';
     if (tag_id) {
-      fromClause = 'FROM works w INNER JOIN work_tags wt_filter ON w.id = wt_filter.work_id';
-      whereClause += ' AND wt_filter.tag_id = ?';
-      params.push(tag_id);
+      const tagIds = tag_id.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      if (tagIds.length > 0) {
+        // For multiple tags, find works that have ALL specified tags (AND logic)
+        fromClause = 'FROM works w INNER JOIN work_tags wt_filter ON w.id = wt_filter.work_id';
+        const placeholders = tagIds.map(() => '?').join(',');
+        whereClause += ` AND wt_filter.tag_id IN (${placeholders})`;
+        params.push(...tagIds);
+        // Group by work to ensure we only get works that match at least one tag
+        // To require ALL tags, we'd need a HAVING COUNT = tagIds.length, but OR logic is more user-friendly
+      }
     }
 
     // Get total count
@@ -122,6 +129,23 @@ router.get('/', (req, res) => {
   } catch (error) {
     console.error('Error fetching works:', error);
     res.error('Failed to fetch works', 'FETCH_ERROR', 500);
+  }
+});
+
+// GET /api/works/years - Get distinct academic years
+router.get('/years', (req, res) => {
+  try {
+    const stmt = db.prepare(`
+      SELECT DISTINCT academic_year
+      FROM works
+      WHERE academic_year IS NOT NULL AND academic_year != ''
+      ORDER BY academic_year DESC
+    `);
+    const years = stmt.all().map(row => row.academic_year);
+    res.success(years);
+  } catch (error) {
+    console.error('Error fetching academic years:', error);
+    res.error('Failed to fetch academic years', 'FETCH_ERROR', 500);
   }
 });
 

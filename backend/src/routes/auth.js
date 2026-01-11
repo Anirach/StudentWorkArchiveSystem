@@ -167,6 +167,51 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
+// PUT /auth/preferences - Update notification preferences
+router.put('/preferences', (req, res) => {
+  if (!req.isAuthenticated() || !req.user) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Not authenticated'
+      }
+    });
+  }
+
+  const { notify_new_works, notify_comments } = req.body;
+
+  try {
+    db.prepare(`
+      UPDATE users
+      SET notify_new_works = ?, notify_comments = ?
+      WHERE id = ?
+    `).run(
+      notify_new_works ? 1 : 0,
+      notify_comments ? 1 : 0,
+      req.user.id
+    );
+
+    // Fetch updated user
+    const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const { google_id, ...userInfo } = updatedUser;
+
+    res.json({
+      success: true,
+      data: userInfo
+    });
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'UPDATE_FAILED',
+        message: 'Failed to update preferences'
+      }
+    });
+  }
+});
+
 // POST /auth/logout - Logout user
 router.post('/logout', (req, res) => {
   req.logout((err) => {

@@ -1,14 +1,29 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('favorites');
   const [favorites, setFavorites] = useState([]);
   const [votes, setVotes] = useState([]);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Notification preferences state
+  const [notifyNewWorks, setNotifyNewWorks] = useState(false);
+  const [notifyComments, setNotifyComments] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
+  // Initialize preferences from user data
+  useEffect(() => {
+    if (user) {
+      setNotifyNewWorks(!!user.notify_new_works);
+      setNotifyComments(!!user.notify_comments);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchUserData();
@@ -227,16 +242,68 @@ export default function ProfilePage() {
       <div className="mt-12 border-t pt-8">
         <h2 className="text-lg font-semibold mb-4">Notification Preferences</h2>
         <div className="space-y-4">
-          <label className="flex items-center gap-3">
-            <input type="checkbox" className="w-4 h-4 rounded" defaultChecked={user?.notify_new_works} />
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              checked={notifyNewWorks}
+              onChange={(e) => setNotifyNewWorks(e.target.checked)}
+            />
             <span>Notify me about new works</span>
           </label>
-          <label className="flex items-center gap-3">
-            <input type="checkbox" className="w-4 h-4 rounded" defaultChecked={user?.notify_comments} />
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              checked={notifyComments}
+              onChange={(e) => setNotifyComments(e.target.checked)}
+            />
             <span>Notify me about replies to my comments</span>
           </label>
         </div>
+        <button
+          onClick={savePreferences}
+          disabled={savingPrefs}
+          className="mt-6 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+        >
+          {savingPrefs && (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-foreground border-t-transparent"></div>
+          )}
+          {savingPrefs ? 'Saving...' : 'Save Preferences'}
+        </button>
       </div>
     </div>
   );
+
+  async function savePreferences() {
+    setSavingPrefs(true);
+    try {
+      const response = await fetch('/auth/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          notify_new_works: notifyNewWorks,
+          notify_comments: notifyComments
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        addToast('Preferences saved successfully', 'success');
+        // Update user context with new preferences
+        if (updateUser) {
+          updateUser(data.data);
+        }
+      } else {
+        addToast(data.error?.message || 'Failed to save preferences', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      addToast('Failed to save preferences', 'error');
+    } finally {
+      setSavingPrefs(false);
+    }
+  }
 }

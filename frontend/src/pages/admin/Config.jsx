@@ -13,9 +13,16 @@ export default function AdminConfig() {
 
   const fetchConfig = async () => {
     try {
-      const response = await fetch('/admin/config', { credentials: 'include' });
+      const response = await fetch('/api/admin/config', { credentials: 'include' });
       const data = await response.json();
-      if (data.success) setConfig(data.data);
+      if (data.success) {
+        // Extract values from the config objects (each has value and description)
+        const configValues = {};
+        for (const [key, obj] of Object.entries(data.data)) {
+          configValues[key] = obj.value || '';
+        }
+        setConfig(configValues);
+      }
     } catch (err) {
       error('Failed to fetch configuration');
     } finally {
@@ -26,7 +33,7 @@ export default function AdminConfig() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch('/admin/config', {
+      const response = await fetch('/api/admin/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

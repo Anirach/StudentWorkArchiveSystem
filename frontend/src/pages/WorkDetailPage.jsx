@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import PdfViewer from '../components/PdfViewer';
+import { formatRelativeTime } from '../utils/dateUtils';
+import WorkTypeIcon, { WorkTypeBadge } from '../components/WorkTypeIcon';
 
 export default function WorkDetailPage() {
   const { id, token } = useParams();
@@ -99,6 +101,8 @@ export default function WorkDetailPage() {
         setUserVote(stars);
         fetchWork(); // Refresh to get new average
         success('Vote submitted!');
+      } else {
+        error(data.error?.message || 'Failed to submit vote');
       }
     } catch (err) {
       error('Failed to submit vote');
@@ -120,6 +124,8 @@ export default function WorkDetailPage() {
         setNewComment('');
         fetchComments();
         success('Comment posted!');
+      } else {
+        error(data.error?.message || 'Failed to post comment');
       }
     } catch (err) {
       error('Failed to post comment');
@@ -341,7 +347,7 @@ export default function WorkDetailPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{comment.user_name}</span>
-                          <span className="text-xs text-muted-foreground">{new Date(comment.created_at).toLocaleDateString()}</span>
+                          <span className="text-xs text-muted-foreground" title={new Date(comment.created_at).toLocaleString()}>{formatRelativeTime(comment.created_at)}</span>
                         </div>
                         <div className="flex gap-2">
                           {isAuthenticated && (
@@ -430,7 +436,7 @@ export default function WorkDetailPage() {
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium text-sm">{reply.user_name}</span>
-                                  <span className="text-xs text-muted-foreground">{new Date(reply.created_at).toLocaleDateString()}</span>
+                                  <span className="text-xs text-muted-foreground" title={new Date(reply.created_at).toLocaleString()}>{formatRelativeTime(reply.created_at)}</span>
                                 </div>
                                 {user && user.id === reply.user_id && (
                                   <button
@@ -465,7 +471,7 @@ export default function WorkDetailPage() {
                       to={`/works/${relatedWork.id}`}
                       className="block border rounded-lg p-4 hover:shadow-md transition-shadow"
                     >
-                      <h4 className="font-medium line-clamp-2 mb-1">{relatedWork.title}</h4>
+                      <h3 className="font-medium line-clamp-2 mb-1">{relatedWork.title}</h3>
                       <p className="text-sm text-muted-foreground">{relatedWork.author_name}</p>
                       {relatedWork.category_name && (
                         <span className="inline-block mt-2 text-xs bg-muted px-2 py-1 rounded">
@@ -491,7 +497,17 @@ export default function WorkDetailPage() {
               <div className="space-y-2 text-sm">
                 <p><span className="text-muted-foreground">Author:</span> {work.author_name}</p>
                 <p><span className="text-muted-foreground">Category:</span> {work.category_name}</p>
-                <p><span className="text-muted-foreground">Type:</span> {work.work_type_name}</p>
+                <p className="flex items-center gap-1">
+                  <span className="text-muted-foreground">Type:</span>
+                  {work.work_type_name ? (
+                    <span className="inline-flex items-center gap-1">
+                      <WorkTypeIcon workType={work.work_type_name} className="w-4 h-4" />
+                      {work.work_type_name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
                 <p><span className="text-muted-foreground">Year:</span> {work.academic_year}</p>
               </div>
               <div className="flex gap-4 text-sm text-muted-foreground">
@@ -502,7 +518,7 @@ export default function WorkDetailPage() {
 
             {/* Rating */}
             <div className="border rounded-lg p-4">
-              <h3 className="font-semibold mb-3">Rating</h3>
+              <h2 className="font-semibold mb-3">Rating</h2>
               <div className="flex items-center gap-2 mb-4">
                 <div className="flex -mx-2">
                   {[1, 2, 3, 4, 5].map(star => (

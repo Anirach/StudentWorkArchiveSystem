@@ -220,7 +220,7 @@ function WorkFormModal({ work, onClose, onSave }) {
               placeholder="Enter work title"
             />
             {errors.title && (
-              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+              <p className="text-red-500 text-sm mt-1" role="alert">{errors.title}</p>
             )}
           </div>
 
@@ -264,7 +264,7 @@ function WorkFormModal({ work, onClose, onSave }) {
                 placeholder="author@example.com"
               />
               {errors.author_email && (
-                <p className="text-red-500 text-sm mt-1">{errors.author_email}</p>
+                <p className="text-red-500 text-sm mt-1" role="alert">{errors.author_email}</p>
               )}
             </div>
           </div>
@@ -313,7 +313,7 @@ function WorkFormModal({ work, onClose, onSave }) {
               placeholder="2024"
             />
             {errors.academic_year && (
-              <p className="text-red-500 text-sm mt-1">{errors.academic_year}</p>
+              <p className="text-red-500 text-sm mt-1" role="alert">{errors.academic_year}</p>
             )}
           </div>
 
@@ -329,7 +329,7 @@ function WorkFormModal({ work, onClose, onSave }) {
               placeholder="Google Drive file ID"
             />
             {errors.google_file_id ? (
-              <p className="text-red-500 text-sm mt-1">{errors.google_file_id}</p>
+              <p className="text-red-500 text-sm mt-1" role="alert">{errors.google_file_id}</p>
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
                 The file ID from Google Drive URL (e.g., from https://drive.google.com/file/d/FILE_ID/view)
@@ -479,7 +479,12 @@ export default function AdminWorks() {
 
   const handleExportCSV = async () => {
     try {
-      const response = await fetch('/api/admin/export/csv', { credentials: 'include' });
+      // Pass search query to export filtered results
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('q', searchQuery);
+      const queryString = params.toString();
+      const url = `/api/admin/export/csv${queryString ? `?${queryString}` : ''}`;
+      const response = await fetch(url, { credentials: 'include' });
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -547,8 +552,8 @@ export default function AdminWorks() {
       </div>
 
       {/* Works Table */}
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="border rounded-lg overflow-x-auto">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-muted">
             <tr>
               <th className="text-left px-4 py-3 font-medium">Title</th>

@@ -73,6 +73,11 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === 'admin';
   const isAuthenticated = !!user;
 
+  // Update user data (used after saving preferences)
+  const updateUser = useCallback((updatedUserData) => {
+    setUser(updatedUserData);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -84,7 +89,8 @@ export function AuthProvider({ children }) {
       checkAuth,
       sessionExpired,
       handleSessionExpiry,
-      clearSessionExpired
+      clearSessionExpired,
+      updateUser
     }}>
       {children}
     </AuthContext.Provider>
