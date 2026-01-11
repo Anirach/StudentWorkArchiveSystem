@@ -117,6 +117,21 @@ router.put('/config', (req, res) => {
 
 // === WORKS ===
 
+// Helper function to convert values for SQLite
+const toSqlite = (value, type = 'string') => {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  if (type === 'int') {
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? null : parsed;
+  }
+  if (type === 'bool') {
+    return value ? 1 : 0;
+  }
+  return String(value);
+};
+
 // POST /admin/works - Create new work
 router.post('/works', (req, res) => {
   try {
@@ -133,8 +148,8 @@ router.post('/works', (req, res) => {
       thumbnail_url,
       file_size,
       page_count,
-      is_featured = 0,
-      is_public = 1,
+      is_featured = false,
+      is_public = true,
       tags = []
     } = req.body;
 
@@ -155,9 +170,21 @@ router.post('/works', (req, res) => {
     `);
 
     const result = insertStmt.run(
-      title, description, author_name, author_email, academic_year,
-      work_type_id, category_id, google_file_id, file_url, thumbnail_url,
-      file_size, page_count, is_featured, is_public, share_token
+      toSqlite(title),
+      toSqlite(description),
+      toSqlite(author_name),
+      toSqlite(author_email),
+      toSqlite(academic_year),
+      toSqlite(work_type_id, 'int'),
+      toSqlite(category_id, 'int'),
+      toSqlite(google_file_id),
+      toSqlite(file_url),
+      toSqlite(thumbnail_url),
+      toSqlite(file_size, 'int'),
+      toSqlite(page_count, 'int'),
+      toSqlite(is_featured, 'bool'),
+      toSqlite(is_public, 'bool'),
+      share_token
     );
 
     const workId = result.lastInsertRowid;
@@ -217,8 +244,16 @@ router.put('/works/:id', (req, res) => {
     `);
 
     updateStmt.run(
-      title, description, author_name, author_email, academic_year,
-      work_type_id, category_id, is_featured, is_public, id
+      toSqlite(title),
+      toSqlite(description),
+      toSqlite(author_name),
+      toSqlite(author_email),
+      toSqlite(academic_year),
+      toSqlite(work_type_id, 'int'),
+      toSqlite(category_id, 'int'),
+      is_featured !== undefined ? toSqlite(is_featured, 'bool') : null,
+      is_public !== undefined ? toSqlite(is_public, 'bool') : null,
+      id
     );
 
     // Update tags if provided

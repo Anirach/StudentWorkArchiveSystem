@@ -104,7 +104,7 @@ app.get('/api/tags', (req, res) => {
 
 app.get('/api/work-types', (req, res) => {
   try {
-    const workTypes = db.prepare('SELECT * FROM work_types ORDER BY sort_order, name').all();
+    const workTypes = db.prepare('SELECT * FROM work_types ORDER BY name').all();
     res.success(workTypes);
   } catch (err) {
     console.error('Error fetching work types:', err);
