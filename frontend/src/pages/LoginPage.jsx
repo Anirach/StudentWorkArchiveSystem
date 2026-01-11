@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
-  const { isAuthenticated, login, checkAuth } = useAuth();
+  const { isAuthenticated, login, checkAuth, clearSessionExpired, sessionExpired: authSessionExpired } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [devLoading, setDevLoading] = useState(false);
 
   const from = location.state?.from?.pathname || '/';
   const isDev = import.meta.env.DEV;
+  // Check state, auth context, and URL params for session expired
+  const sessionExpired = location.state?.sessionExpired || authSessionExpired || searchParams.get('session_expired') === 'true';
 
   useEffect(() => {
     if (isAuthenticated) {
+      // Clear session expired flag when user logs in
+      clearSessionExpired();
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, from, clearSessionExpired]);
 
   const handleDevLogin = async (role) => {
     setDevLoading(true);
@@ -39,6 +44,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
+        {sessionExpired && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center justify-center gap-2 text-yellow-800">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="font-medium">Your session has expired</span>
+            </div>
+            <p className="text-sm text-yellow-700 mt-1">
+              Please sign in again to continue.
+            </p>
+          </div>
+        )}
         <h1 className="text-3xl font-bold mb-4">Welcome Back</h1>
         <p className="text-muted-foreground mb-8">
           Sign in to access your favorites, vote on works, and join the discussion.
