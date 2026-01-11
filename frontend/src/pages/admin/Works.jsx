@@ -106,6 +106,14 @@ function WorkFormModal({ work, onClose, onSave }) {
       setIsDirty(checkIsDirty(newData));
       return newData;
     });
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleTagToggle = (tagId) => {
