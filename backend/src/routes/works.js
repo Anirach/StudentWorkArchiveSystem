@@ -28,7 +28,13 @@ router.get('/', (req, res) => {
       q
     } = req.query;
 
-    const offset = (parseInt(page) - 1) * parseInt(per_page);
+    // Validate and sanitize pagination parameters - default to valid values if malformed
+    const parsedPage = parseInt(page);
+    const parsedPerPage = parseInt(per_page);
+    const validPage = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
+    const validPerPage = isNaN(parsedPerPage) || parsedPerPage < 1 || parsedPerPage > 100 ? 12 : parsedPerPage;
+
+    const offset = (validPage - 1) * validPerPage;
     let whereClause = 'WHERE w.is_public = 1';
     const params = [];
 
@@ -93,7 +99,7 @@ router.get('/', (req, res) => {
       LIMIT ? OFFSET ?
     `);
 
-    const works = stmt.all(...params, parseInt(per_page), offset);
+    const works = stmt.all(...params, validPerPage, offset);
 
     // Get tags for each work
     const tagStmt = db.prepare(`
@@ -108,10 +114,10 @@ router.get('/', (req, res) => {
     }));
 
     res.success(worksWithTags, {
-      page: parseInt(page),
-      per_page: parseInt(per_page),
+      page: validPage,
+      per_page: validPerPage,
       total: count,
-      total_pages: Math.ceil(count / parseInt(per_page))
+      total_pages: Math.ceil(count / validPerPage)
     });
   } catch (error) {
     console.error('Error fetching works:', error);
