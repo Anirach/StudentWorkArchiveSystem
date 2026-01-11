@@ -9,6 +9,14 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import worksRoutes from './routes/works.js';
 import adminRoutes from './routes/admin.js';
+import Database from 'better-sqlite3';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const dbPath = process.env.DATABASE_PATH || join(__dirname, '../data/archive.db');
+const db = new Database(dbPath);
 
 // Load environment variables
 dotenv.config({ path: '../.env' });
@@ -73,17 +81,35 @@ app.use('/auth', authRoutes);
 app.use('/api/works', worksRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Placeholder routes for taxonomies
+// Taxonomy routes - fetch from database
 app.get('/api/categories', (req, res) => {
-  res.success([]);
+  try {
+    const categories = db.prepare('SELECT * FROM categories ORDER BY sort_order, name').all();
+    res.success(categories);
+  } catch (err) {
+    console.error('Error fetching categories:', err);
+    res.success([]);
+  }
 });
 
 app.get('/api/tags', (req, res) => {
-  res.success([]);
+  try {
+    const tags = db.prepare('SELECT * FROM tags ORDER BY name').all();
+    res.success(tags);
+  } catch (err) {
+    console.error('Error fetching tags:', err);
+    res.success([]);
+  }
 });
 
 app.get('/api/work-types', (req, res) => {
-  res.success([]);
+  try {
+    const workTypes = db.prepare('SELECT * FROM work_types ORDER BY sort_order, name').all();
+    res.success(workTypes);
+  } catch (err) {
+    console.error('Error fetching work types:', err);
+    res.success([]);
+  }
 });
 
 // 404 handler

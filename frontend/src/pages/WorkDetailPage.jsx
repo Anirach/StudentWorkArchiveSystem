@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import PdfViewer from '../components/PdfViewer';
@@ -110,6 +110,21 @@ export default function WorkDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Breadcrumbs */}
+      <nav className="flex items-center gap-2 text-sm mb-6" aria-label="Breadcrumb">
+        <Link to="/" className="text-muted-foreground hover:text-foreground">
+          Home
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <Link to="/works" className="text-muted-foreground hover:text-foreground">
+          Browse
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground font-medium truncate max-w-[200px]">
+          {work.title}
+        </span>
+      </nav>
+
       <div className="flex flex-col lg:flex-row gap-8">
         {/* PDF Viewer */}
         <main className="flex-1">

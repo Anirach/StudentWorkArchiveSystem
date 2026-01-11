@@ -27,7 +27,7 @@ export default function AdminCategories() {
   const handleCreate = async () => {
     if (!newName.trim()) return;
     try {
-      const response = await fetch('/admin/categories', {
+      const response = await fetch('/api/admin/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -45,7 +45,7 @@ export default function AdminCategories() {
 
   const handleUpdate = async (id, name) => {
     try {
-      const response = await fetch(`/admin/categories/${id}`, {
+      const response = await fetch(`/api/admin/categories/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -64,7 +64,7 @@ export default function AdminCategories() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this category?')) return;
     try {
-      const response = await fetch(`/admin/categories/${id}`, {
+      const response = await fetch(`/api/admin/categories/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
