@@ -15,14 +15,27 @@ export default function WorkDetailPage() {
   const [userVote, setUserVote] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
+  const [relatedWorks, setRelatedWorks] = useState([]);
 
   useEffect(() => {
     fetchWork();
     if (id) {
       fetchComments();
+      fetchRelatedWorks();
       recordView();
     }
   }, [id, token]);
+
+  const fetchRelatedWorks = async () => {
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/works/${id}/related`);
+      const data = await response.json();
+      if (data.success) setRelatedWorks(data.data);
+    } catch (err) {
+      console.error('Failed to fetch related works:', err);
+    }
+  };
 
   const recordView = async () => {
     if (!id) return;
@@ -257,8 +270,28 @@ export default function WorkDetailPage() {
           )}
 
           {activeTab === 'related' && (
-            <div className="text-center text-muted-foreground py-8">
-              Related works will be shown here.
+            <div className="space-y-4">
+              {relatedWorks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {relatedWorks.map(relatedWork => (
+                    <Link
+                      key={relatedWork.id}
+                      to={`/works/${relatedWork.id}`}
+                      className="block border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <h4 className="font-medium line-clamp-2 mb-1">{relatedWork.title}</h4>
+                      <p className="text-sm text-muted-foreground">{relatedWork.author_name}</p>
+                      {relatedWork.category_name && (
+                        <span className="inline-block mt-2 text-xs bg-muted px-2 py-1 rounded">
+                          {relatedWork.category_name}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No related works found.</p>
+              )}
             </div>
           )}
         </main>
