@@ -6,6 +6,8 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import passport from 'passport';
 import dotenv from 'dotenv';
+import authRoutes from './routes/auth.js';
+import worksRoutes from './routes/works.js';
 
 // Load environment variables
 dotenv.config({ path: '../.env' });
@@ -65,20 +67,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes will be imported here
-// import authRoutes from './routes/auth.js';
-// import worksRoutes from './routes/works.js';
+// Routes
+app.use('/auth', authRoutes);
+app.use('/api/works', worksRoutes);
 // import adminRoutes from './routes/admin.js';
-
-// app.use('/auth', authRoutes);
-// app.use('/api', worksRoutes);
 // app.use('/admin', adminRoutes);
 
-// Placeholder routes for initial testing
-app.get('/api/works', (req, res) => {
-  res.success([], { page: 1, per_page: 12, total: 0, total_pages: 0 });
-});
-
+// Placeholder routes for taxonomies
 app.get('/api/categories', (req, res) => {
   res.success([]);
 });
