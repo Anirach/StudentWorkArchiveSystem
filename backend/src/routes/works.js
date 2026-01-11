@@ -29,32 +29,32 @@ router.get('/', (req, res) => {
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(per_page);
-    let whereClause = 'WHERE is_public = 1';
+    let whereClause = 'WHERE w.is_public = 1';
     const params = [];
 
     if (category_id) {
-      whereClause += ' AND category_id = ?';
+      whereClause += ' AND w.category_id = ?';
       params.push(category_id);
     }
 
     if (work_type_id) {
-      whereClause += ' AND work_type_id = ?';
+      whereClause += ' AND w.work_type_id = ?';
       params.push(work_type_id);
     }
 
     if (academic_year) {
-      whereClause += ' AND academic_year = ?';
+      whereClause += ' AND w.academic_year = ?';
       params.push(academic_year);
     }
 
     if (q) {
-      whereClause += ' AND (title LIKE ? OR description LIKE ? OR author_name LIKE ?)';
+      whereClause += ' AND (w.title LIKE ? OR w.description LIKE ? OR w.author_name LIKE ?)';
       const searchTerm = `%${q}%`;
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
     // Get total count
-    const countStmt = db.prepare(`SELECT COUNT(*) as count FROM works ${whereClause}`);
+    const countStmt = db.prepare(`SELECT COUNT(*) as count FROM works w ${whereClause}`);
     const { count } = countStmt.get(...params);
 
     // Get works
