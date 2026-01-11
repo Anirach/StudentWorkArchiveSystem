@@ -8,6 +8,7 @@ function WorkFormModal({ work, onClose, onSave }) {
   const [workTypes, setWorkTypes] = useState([]);
   const [tags, setTags] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     title: work?.title || '',
     description: work?.description || '',
@@ -75,8 +76,28 @@ function WorkFormModal({ work, onClose, onSave }) {
     }));
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    }
+    if (!formData.google_file_id.trim()) {
+      newErrors.google_file_id = 'Google Drive File ID is required';
+    }
+    if (formData.author_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.author_email)) {
+      newErrors.author_email = 'Please enter a valid email address';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -125,10 +146,12 @@ function WorkFormModal({ work, onClose, onSave }) {
               name="title"
               value={formData.title}
               onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.title ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
               placeholder="Enter work title"
             />
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+            )}
           </div>
 
           {/* Description */}
@@ -164,9 +187,12 @@ function WorkFormModal({ work, onClose, onSave }) {
                 name="author_email"
                 value={formData.author_email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.author_email ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
                 placeholder="author@example.com"
               />
+              {errors.author_email && (
+                <p className="text-red-500 text-sm mt-1">{errors.author_email}</p>
+              )}
             </div>
           </div>
 
@@ -223,13 +249,16 @@ function WorkFormModal({ work, onClose, onSave }) {
               name="google_file_id"
               value={formData.google_file_id}
               onChange={handleChange}
-              required
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.google_file_id ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
               placeholder="Google Drive file ID"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              The file ID from Google Drive URL (e.g., from https://drive.google.com/file/d/FILE_ID/view)
-            </p>
+            {errors.google_file_id ? (
+              <p className="text-red-500 text-sm mt-1">{errors.google_file_id}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-1">
+                The file ID from Google Drive URL (e.g., from https://drive.google.com/file/d/FILE_ID/view)
+              </p>
+            )}
           </div>
 
           {/* Tags */}
