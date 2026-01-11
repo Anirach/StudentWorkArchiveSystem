@@ -18,8 +18,24 @@ export default function WorkDetailPage() {
 
   useEffect(() => {
     fetchWork();
-    if (id) fetchComments();
+    if (id) {
+      fetchComments();
+      recordView();
+    }
   }, [id, token]);
+
+  const recordView = async () => {
+    if (!id) return;
+    try {
+      await fetch(`/api/works/${id}/view`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (err) {
+      // Silently fail - view recording is not critical
+      console.error('Failed to record view:', err);
+    }
+  };
 
   const fetchWork = async () => {
     setLoading(true);
