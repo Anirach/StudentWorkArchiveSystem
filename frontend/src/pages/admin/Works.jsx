@@ -381,6 +381,7 @@ export default function AdminWorks() {
   const [editingWork, setEditingWork] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null); // Work to delete
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchWorks();
@@ -407,7 +408,8 @@ export default function AdminWorks() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteConfirm) return;
+    if (!deleteConfirm || deleting) return;
+    setDeleting(true);
     try {
       const response = await fetch(`/api/admin/works/${deleteConfirm.id}`, {
         method: 'DELETE',
@@ -421,6 +423,7 @@ export default function AdminWorks() {
       error('Failed to delete work');
     } finally {
       setDeleteConfirm(null);
+      setDeleting(false);
     }
   };
 
@@ -594,9 +597,10 @@ export default function AdminWorks() {
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
-                Delete
+                {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
