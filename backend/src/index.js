@@ -8,6 +8,7 @@ import passport from 'passport';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import worksRoutes from './routes/works.js';
+import adminRoutes from './routes/admin.js';
 
 // Load environment variables
 dotenv.config({ path: '../.env' });
@@ -70,8 +71,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/works', worksRoutes);
-// import adminRoutes from './routes/admin.js';
-// app.use('/admin', adminRoutes);
+app.use('/admin', adminRoutes);
 
 // Placeholder routes for taxonomies
 app.get('/api/categories', (req, res) => {
