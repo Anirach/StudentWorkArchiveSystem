@@ -125,6 +125,8 @@ function WorkFormModal({ work, onClose, onSave }) {
     const newErrors = {};
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
+    } else if (formData.title.length > 255) {
+      newErrors.title = 'Title must be 255 characters or less';
     }
     if (!formData.google_file_id.trim()) {
       newErrors.google_file_id = 'Google Drive File ID is required';
@@ -205,6 +207,7 @@ function WorkFormModal({ work, onClose, onSave }) {
               name="title"
               value={formData.title}
               onChange={handleChange}
+              maxLength={255}
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.title ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
               placeholder="Enter work title"
             />
@@ -221,9 +224,11 @@ function WorkFormModal({ work, onClose, onSave }) {
               value={formData.description}
               onChange={handleChange}
               rows={3}
+              maxLength={2000}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary resize-none"
               placeholder="Enter work description"
             />
+            <p className="text-xs text-muted-foreground mt-1 text-right">{formData.description.length}/2000</p>
           </div>
 
           {/* Author Name & Email */}
@@ -235,6 +240,7 @@ function WorkFormModal({ work, onClose, onSave }) {
                 name="author_name"
                 value={formData.author_name}
                 onChange={handleChange}
+                maxLength={200}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                 placeholder="Author name"
               />

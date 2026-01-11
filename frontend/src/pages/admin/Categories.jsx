@@ -96,6 +96,7 @@ export default function AdminCategories() {
           placeholder="New category name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
+          maxLength={100}
           className="flex-1 max-w-md px-4 py-2 border rounded-lg"
           onKeyPress={(e) => e.key === 'Enter' && handleCreate()}
         />
@@ -116,6 +117,7 @@ export default function AdminCategories() {
                 <input
                   type="text"
                   defaultValue={category.name}
+                  maxLength={100}
                   className="flex-1 px-3 py-1 border rounded mr-4"
                   autoFocus
                   onKeyPress={(e) => {

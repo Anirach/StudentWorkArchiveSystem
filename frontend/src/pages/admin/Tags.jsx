@@ -104,6 +104,7 @@ export default function AdminTags() {
           placeholder="New tag name"
           value={newTag.name}
           onChange={(e) => setNewTag({ ...newTag, name: e.target.value })}
+          maxLength={50}
           className="flex-1 max-w-md px-4 py-2 border rounded-lg"
         />
         <input
@@ -135,6 +136,7 @@ export default function AdminTags() {
                   <input
                     type="text"
                     defaultValue={tag.name}
+                    maxLength={50}
                     className="flex-1 px-2 py-1 border rounded"
                     id={`tag-name-${tag.id}`}
                   />
