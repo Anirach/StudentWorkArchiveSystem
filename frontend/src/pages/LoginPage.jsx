@@ -1,19 +1,40 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login, checkAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [devLoading, setDevLoading] = useState(false);
 
   const from = location.state?.from?.pathname || '/';
+  const isDev = import.meta.env.DEV;
 
   useEffect(() => {
     if (isAuthenticated) {
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, from]);
+
+  const handleDevLogin = async (role) => {
+    setDevLoading(true);
+    try {
+      const response = await fetch('/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role }),
+      });
+      if (response.ok) {
+        await checkAuth();
+      }
+    } catch (error) {
+      console.error('Dev login failed:', error);
+    } finally {
+      setDevLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -37,6 +58,31 @@ export default function LoginPage() {
         <p className="text-sm text-muted-foreground mt-6">
           By signing in, you agree to our Terms of Service and Privacy Policy.
         </p>
+
+        {/* Development login options */}
+        {isDev && (
+          <div className="mt-8 pt-8 border-t border-gray-200">
+            <p className="text-sm text-muted-foreground mb-4">
+              Development Mode - Quick Login:
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => handleDevLogin('user')}
+                disabled={devLoading}
+                className="px-4 py-2 rounded-lg bg-blue-100 text-blue-700 font-medium hover:bg-blue-200 transition-colors disabled:opacity-50"
+              >
+                Login as User
+              </button>
+              <button
+                onClick={() => handleDevLogin('admin')}
+                disabled={devLoading}
+                className="px-4 py-2 rounded-lg bg-purple-100 text-purple-700 font-medium hover:bg-purple-200 transition-colors disabled:opacity-50"
+              >
+                Login as Admin
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

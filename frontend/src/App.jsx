@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import BrowsePage from './pages/BrowsePage';
 import WorkDetailPage from './pages/WorkDetailPage';
 import LoginPage from './pages/LoginPage';
+import DevLoginPage from './pages/DevLoginPage';
 import ProfilePage from './pages/ProfilePage';
 import FavoritesPage from './pages/FavoritesPage';
 import AdminDashboard from './pages/admin/Dashboard';
@@ -14,6 +15,7 @@ import AdminCategories from './pages/admin/Categories';
 import AdminTags from './pages/admin/Tags';
 import AdminUsers from './pages/admin/Users';
 import AdminConfig from './pages/admin/Config';
+import AdminAnalytics from './pages/admin/Analytics';
 import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
@@ -30,6 +32,7 @@ function App() {
             <Route path="works/:id" element={<WorkDetailPage />} />
             <Route path="share/:token" element={<WorkDetailPage />} />
             <Route path="login" element={<LoginPage />} />
+            <Route path="dev-login" element={<DevLoginPage />} />
 
             {/* Protected routes (require authentication) */}
             <Route element={<ProtectedRoute />}>
@@ -46,6 +49,7 @@ function App() {
               <Route path="tags" element={<AdminTags />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="config" element={<AdminConfig />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
             </Route>
 
             {/* 404 */}
