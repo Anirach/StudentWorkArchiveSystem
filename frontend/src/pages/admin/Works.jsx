@@ -83,6 +83,17 @@ function WorkFormModal({ work, onClose, onSave }) {
     }
     if (!formData.google_file_id.trim()) {
       newErrors.google_file_id = 'Google Drive File ID is required';
+    } else {
+      // Validate Google Drive File ID format (typically 33+ alphanumeric characters with - and _)
+      const fileId = formData.google_file_id.trim();
+      // Check if user accidentally pasted full URL instead of just the ID
+      if (fileId.includes('drive.google.com') || fileId.includes('docs.google.com')) {
+        newErrors.google_file_id = 'Please enter only the File ID, not the full URL. Extract the ID from the URL.';
+      } else if (fileId.length < 10) {
+        newErrors.google_file_id = 'Invalid File ID. Google Drive File IDs are typically longer than 10 characters.';
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
+        newErrors.google_file_id = 'Invalid File ID format. File IDs should only contain letters, numbers, hyphens, and underscores.';
+      }
     }
     if (formData.author_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.author_email)) {
       newErrors.author_email = 'Please enter a valid email address';
