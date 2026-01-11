@@ -27,7 +27,7 @@ export default function AdminTags() {
   const handleCreate = async () => {
     if (!newTag.name.trim()) return;
     try {
-      const response = await fetch('/admin/tags', {
+      const response = await fetch('/api/admin/tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -45,7 +45,7 @@ export default function AdminTags() {
 
   const handleUpdate = async (id, data) => {
     try {
-      const response = await fetch(`/admin/tags/${id}`, {
+      const response = await fetch(`/api/admin/tags/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -64,7 +64,7 @@ export default function AdminTags() {
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this tag?')) return;
     try {
-      const response = await fetch(`/admin/tags/${id}`, {
+      const response = await fetch(`/api/admin/tags/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
