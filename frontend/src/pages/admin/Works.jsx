@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '../../context/ToastContext';
 
 // Work Form Modal Component
@@ -9,7 +9,8 @@ function WorkFormModal({ work, onClose, onSave }) {
   const [tags, setTags] = useState([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  const [formData, setFormData] = useState({
+  const [isDirty, setIsDirty] = useState(false);
+  const initialFormData = useRef({
     title: work?.title || '',
     description: work?.description || '',
     author_name: work?.author_name || '',
@@ -22,6 +23,35 @@ function WorkFormModal({ work, onClose, onSave }) {
     is_public: work?.is_public ?? true,
     selectedTags: work?.tags?.map(t => t.id) || []
   });
+  const [formData, setFormData] = useState(initialFormData.current);
+
+  // Check if form has unsaved changes
+  const checkIsDirty = useCallback((data) => {
+    return JSON.stringify(data) !== JSON.stringify(initialFormData.current);
+  }, []);
+
+  // Handle close with unsaved changes warning
+  const handleClose = useCallback(() => {
+    if (isDirty) {
+      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  }, [isDirty, onClose]);
+
+  // Add beforeunload listener to warn about unsaved changes on page refresh/close
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     fetchCategories();
@@ -61,19 +91,27 @@ function WorkFormModal({ work, onClose, onSave }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      };
+      setIsDirty(checkIsDirty(newData));
+      return newData;
+    });
   };
 
   const handleTagToggle = (tagId) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedTags: prev.selectedTags.includes(tagId)
-        ? prev.selectedTags.filter(id => id !== tagId)
-        : [...prev.selectedTags, tagId]
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        selectedTags: prev.selectedTags.includes(tagId)
+          ? prev.selectedTags.filter(id => id !== tagId)
+          : [...prev.selectedTags, tagId]
+      };
+      setIsDirty(checkIsDirty(newData));
+      return newData;
+    });
   };
 
   const validateForm = () => {
@@ -316,7 +354,7 @@ function WorkFormModal({ work, onClose, onSave }) {
           <div className="flex justify-end gap-2 pt-4 border-t">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 border rounded-lg hover:bg-accent"
             >
               Cancel

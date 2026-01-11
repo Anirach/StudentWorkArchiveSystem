@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams, useLocation } from 'react-router-dom';
 
 export default function BrowsePage() {
@@ -11,6 +11,7 @@ export default function BrowsePage() {
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const [meta, setMeta] = useState({ page: 1, total_pages: 1, total: 0 });
+  const isInitialized = useRef(false);
 
   const currentPage = parseInt(searchParams.get('page') || '1');
   const searchQuery = searchParams.get('q') || '';
@@ -45,14 +46,35 @@ export default function BrowsePage() {
     }
   }, [currentPage, sortBy, searchQuery, categoryFilter, tagFilter]);
 
-  // Fetch works whenever location changes (handles back button)
+  // Fetch works whenever URL parameters change (handles back button)
   useEffect(() => {
     fetchWorks();
-  }, [location.key, fetchWorks]);
+  }, [fetchWorks]);
 
+  // Fetch filters on mount and handle pageshow event for bfcache restoration
   useEffect(() => {
-    fetchFilters();
-  }, []);
+    const loadFilters = () => {
+      fetchFilters();
+    };
+
+    // Initial load
+    if (!isInitialized.current) {
+      loadFilters();
+      isInitialized.current = true;
+    }
+
+    // Handle browser back/forward navigation (bfcache restoration)
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        // Page was restored from bfcache, refetch data
+        loadFilters();
+        fetchWorks();
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, [fetchWorks]);
 
   const fetchFilters = async () => {
     try {

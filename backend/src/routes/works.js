@@ -143,6 +143,61 @@ router.get('/featured', (req, res) => {
   }
 });
 
+// GET /api/works/user/votes - List user's votes (must be before /:id)
+router.get('/user/votes', isAuthenticated, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const stmt = db.prepare(`
+      SELECT w.*,
+             c.name as category_name,
+             wt.name as work_type_name,
+             v.stars as user_vote,
+             v.created_at as voted_at,
+             (SELECT AVG(stars) FROM votes WHERE work_id = w.id) as avg_rating,
+             (SELECT COUNT(*) FROM votes WHERE work_id = w.id) as vote_count
+      FROM votes v
+      JOIN works w ON v.work_id = w.id
+      LEFT JOIN categories c ON w.category_id = c.id
+      LEFT JOIN work_types wt ON w.work_type_id = wt.id
+      WHERE v.user_id = ?
+      ORDER BY v.created_at DESC
+    `);
+    const votes = stmt.all(userId);
+
+    res.success(votes);
+  } catch (error) {
+    console.error('Error fetching user votes:', error);
+    res.error('Failed to fetch votes', 'ERROR', 500);
+  }
+});
+
+// GET /api/works/user/comments - List user's comments (must be before /:id)
+router.get('/user/comments', isAuthenticated, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const stmt = db.prepare(`
+      SELECT c.*,
+             w.id as work_id,
+             w.title as work_title,
+             u.name as user_name,
+             u.avatar_url as user_avatar
+      FROM comments c
+      JOIN works w ON c.work_id = w.id
+      JOIN users u ON c.user_id = u.id
+      WHERE c.user_id = ? AND c.is_deleted = 0
+      ORDER BY c.created_at DESC
+    `);
+    const comments = stmt.all(userId);
+
+    res.success(comments);
+  } catch (error) {
+    console.error('Error fetching user comments:', error);
+    res.error('Failed to fetch comments', 'ERROR', 500);
+  }
+});
+
 // GET /api/works/favorites - List user's favorites (must be before /:id)
 router.get('/favorites', isAuthenticated, (req, res) => {
   try {
