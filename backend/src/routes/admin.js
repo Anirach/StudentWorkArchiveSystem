@@ -452,6 +452,14 @@ router.put('/tags/:id', (req, res) => {
       return res.error('Tag not found', 'NOT_FOUND', 404);
     }
 
+    // Check if new name already exists (for a different tag)
+    if (name) {
+      const duplicate = db.prepare('SELECT id FROM tags WHERE name = ? AND id != ?').get(name, id);
+      if (duplicate) {
+        return res.error('Tag name already exists', 'ALREADY_EXISTS', 400);
+      }
+    }
+
     const updateStmt = db.prepare(`
       UPDATE tags SET
         name = COALESCE(?, name),

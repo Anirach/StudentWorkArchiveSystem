@@ -33,28 +33,36 @@ export default function AdminTags() {
         credentials: 'include',
         body: JSON.stringify(newTag)
       });
-      if (response.ok) {
+      const data = await response.json();
+      if (response.ok && data.success) {
         success('Tag created');
         setNewTag({ name: '', color: '#6B7280' });
         fetchTags();
+      } else {
+        // Show the error message from the server
+        error(data.error?.message || 'Failed to create tag');
       }
     } catch (err) {
       error('Failed to create tag');
     }
   };
 
-  const handleUpdate = async (id, data) => {
+  const handleUpdate = async (id, updateData) => {
     try {
       const response = await fetch(`/api/admin/tags/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(data)
+        body: JSON.stringify(updateData)
       });
-      if (response.ok) {
+      const data = await response.json();
+      if (response.ok && data.success) {
         success('Tag updated');
         setEditingId(null);
         fetchTags();
+      } else {
+        // Show the error message from the server
+        error(data.error?.message || 'Failed to update tag');
       }
     } catch (err) {
       error('Failed to update tag');
