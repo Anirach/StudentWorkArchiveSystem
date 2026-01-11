@@ -15,6 +15,7 @@ export default function BrowsePage() {
   const currentPage = parseInt(searchParams.get('page') || '1');
   const searchQuery = searchParams.get('q') || '';
   const categoryFilter = searchParams.get('category') || '';
+  const tagFilter = searchParams.get('tag') || '';
   const sortBy = searchParams.get('sort') || 'date';
 
   const fetchWorks = useCallback(async () => {
@@ -25,7 +26,8 @@ export default function BrowsePage() {
         page: currentPage,
         sort: sortBy,
         ...(searchQuery && { q: searchQuery }),
-        ...(categoryFilter && { category: categoryFilter })
+        ...(categoryFilter && { category_id: categoryFilter }),
+        ...(tagFilter && { tag_id: tagFilter })
       });
       const response = await fetch(`/api/works?${params}`);
       const data = await response.json();
@@ -41,7 +43,7 @@ export default function BrowsePage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, sortBy, searchQuery, categoryFilter]);
+  }, [currentPage, sortBy, searchQuery, categoryFilter, tagFilter]);
 
   // Fetch works whenever location changes (handles back button)
   useEffect(() => {
@@ -104,13 +106,18 @@ export default function BrowsePage() {
               <h3 className="font-semibold mb-3">Tags</h3>
               <div className="flex flex-wrap gap-2">
                 {tags.map(tag => (
-                  <span
+                  <button
                     key={tag.id}
-                    className="px-2 py-1 text-xs rounded-full border cursor-pointer hover:bg-accent"
+                    onClick={() => {
+                      searchParams.set('tag', tag.id);
+                      searchParams.set('page', '1');
+                      setSearchParams(searchParams);
+                    }}
+                    className={`px-2 py-1 text-xs rounded-full border cursor-pointer hover:bg-accent ${tagFilter === String(tag.id) ? 'bg-primary text-primary-foreground' : ''}`}
                     style={{ borderColor: tag.color }}
                   >
                     {tag.name}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>

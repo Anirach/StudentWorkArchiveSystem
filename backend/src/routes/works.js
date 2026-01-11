@@ -53,8 +53,16 @@ router.get('/', (req, res) => {
       params.push(searchTerm, searchTerm, searchTerm);
     }
 
+    // Handle tag filtering through a subquery
+    let fromClause = 'FROM works w';
+    if (tag_id) {
+      fromClause = 'FROM works w INNER JOIN work_tags wt_filter ON w.id = wt_filter.work_id';
+      whereClause += ' AND wt_filter.tag_id = ?';
+      params.push(tag_id);
+    }
+
     // Get total count
-    const countStmt = db.prepare(`SELECT COUNT(*) as count FROM works w ${whereClause}`);
+    const countStmt = db.prepare(`SELECT COUNT(DISTINCT w.id) as count ${fromClause} ${whereClause}`);
     const { count } = countStmt.get(...params);
 
     // Get works
@@ -63,14 +71,14 @@ router.get('/', (req, res) => {
     const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
 
     const stmt = db.prepare(`
-      SELECT w.*,
+      SELECT DISTINCT w.*,
              c.name as category_name,
-             wt.name as work_type_name,
+             wtype.name as work_type_name,
              (SELECT AVG(stars) FROM votes WHERE work_id = w.id) as avg_rating,
              (SELECT COUNT(*) FROM votes WHERE work_id = w.id) as vote_count
-      FROM works w
+      ${fromClause}
       LEFT JOIN categories c ON w.category_id = c.id
-      LEFT JOIN work_types wt ON w.work_type_id = wt.id
+      LEFT JOIN work_types wtype ON w.work_type_id = wtype.id
       ${whereClause}
       ORDER BY ${sortColumn} ${sortOrder}
       LIMIT ? OFFSET ?
