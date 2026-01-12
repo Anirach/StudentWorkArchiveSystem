@@ -10,18 +10,18 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 3801,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3802',
         changeOrigin: true,
       },
       '/auth': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3802',
         changeOrigin: true,
       },
       '/public': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3802',
         changeOrigin: true,
       },
     },
