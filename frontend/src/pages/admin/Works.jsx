@@ -10,6 +10,43 @@ function WorkFormModal({ work, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [isDirty, setIsDirty] = useState(false);
+  // Helper function to extract file ID from Google Drive URL
+  const extractFileIdFromUrl = (url) => {
+    if (!url) return '';
+    // Match various Google Drive URL formats
+    // https://drive.google.com/file/d/FILE_ID/view
+    // https://drive.google.com/open?id=FILE_ID
+    // https://docs.google.com/document/d/FILE_ID/edit
+    // https://docs.google.com/spreadsheets/d/FILE_ID/edit
+    // https://docs.google.com/presentation/d/FILE_ID/edit
+    const patterns = [
+      /\/d\/([a-zA-Z0-9_-]+)/,           // /d/FILE_ID/
+      /[?&]id=([a-zA-Z0-9_-]+)/,         // ?id=FILE_ID or &id=FILE_ID
+      /\/folders\/([a-zA-Z0-9_-]+)/      // /folders/FOLDER_ID (for folder links)
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+
+    // If no pattern matches, assume it might already be a file ID
+    if (/^[a-zA-Z0-9_-]{10,}$/.test(url.trim())) {
+      return url.trim();
+    }
+
+    return '';
+  };
+
+  // Convert existing file_id to URL for display (if editing)
+  const getInitialDriveUrl = () => {
+    if (work?.file_url) return work.file_url;
+    if (work?.google_file_id) {
+      return `https://drive.google.com/file/d/${work.google_file_id}/view`;
+    }
+    return '';
+  };
+
   const initialFormData = useRef({
     title: work?.title || '',
     description: work?.description || '',
@@ -18,8 +55,7 @@ function WorkFormModal({ work, onClose, onSave }) {
     academic_year: work?.academic_year || new Date().getFullYear().toString(),
     category_id: work?.category_id || '',
     work_type_id: work?.work_type_id || '',
-    google_file_id: work?.google_file_id || '',
-    file_url: work?.file_url || '',
+    google_drive_url: getInitialDriveUrl(),
     is_public: work?.is_public ?? true,
     selectedTags: work?.tags?.map(t => t.id) || []
   });
@@ -136,18 +172,15 @@ function WorkFormModal({ work, onClose, onSave }) {
     } else if (formData.title.length > 255) {
       newErrors.title = 'Title must be 255 characters or less';
     }
-    if (!formData.google_file_id.trim()) {
-      newErrors.google_file_id = 'Google Drive File ID is required';
+    if (!formData.google_drive_url.trim()) {
+      newErrors.google_drive_url = 'Google Drive URL is required';
     } else {
-      // Validate Google Drive File ID format (typically 33+ alphanumeric characters with - and _)
-      const fileId = formData.google_file_id.trim();
-      // Check if user accidentally pasted full URL instead of just the ID
-      if (fileId.includes('drive.google.com') || fileId.includes('docs.google.com')) {
-        newErrors.google_file_id = 'Please enter only the File ID, not the full URL. Extract the ID from the URL.';
+      // Try to extract file ID from the URL
+      const fileId = extractFileIdFromUrl(formData.google_drive_url);
+      if (!fileId) {
+        newErrors.google_drive_url = 'Could not extract file ID from URL. Please enter a valid Google Drive URL.';
       } else if (fileId.length < 10) {
-        newErrors.google_file_id = 'Invalid File ID. Google Drive File IDs are typically longer than 10 characters.';
-      } else if (!/^[a-zA-Z0-9_-]+$/.test(fileId)) {
-        newErrors.google_file_id = 'Invalid File ID format. File IDs should only contain letters, numbers, hyphens, and underscores.';
+        newErrors.google_drive_url = 'Invalid URL. The extracted file ID seems too short.';
       }
     }
     if (formData.author_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.author_email)) {
@@ -175,12 +208,17 @@ function WorkFormModal({ work, onClose, onSave }) {
         : '/api/admin/works';
       const method = work ? 'PUT' : 'POST';
 
+      // Extract file ID from the Google Drive URL
+      const google_file_id = extractFileIdFromUrl(formData.google_drive_url);
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           ...formData,
+          google_file_id,
+          file_url: formData.google_drive_url,
           tags: formData.selectedTags
         })
       });
@@ -317,22 +355,27 @@ function WorkFormModal({ work, onClose, onSave }) {
             )}
           </div>
 
-          {/* Google File ID */}
+          {/* Google Drive URL */}
           <div>
-            <label className="block text-sm font-medium mb-1">Google Drive File ID *</label>
+            <label className="block text-sm font-medium mb-1">Google Drive URL *</label>
             <input
-              type="text"
-              name="google_file_id"
-              value={formData.google_file_id}
+              type="url"
+              name="google_drive_url"
+              value={formData.google_drive_url}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.google_file_id ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
-              placeholder="Google Drive file ID"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary ${errors.google_drive_url ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
+              placeholder="https://drive.google.com/file/d/FILE_ID/view"
             />
-            {errors.google_file_id ? (
-              <p className="text-red-500 text-sm mt-1" role="alert">{errors.google_file_id}</p>
+            {errors.google_drive_url ? (
+              <p className="text-red-500 text-sm mt-1" role="alert">{errors.google_drive_url}</p>
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
-                The file ID from Google Drive URL (e.g., from https://drive.google.com/file/d/FILE_ID/view)
+                Paste the full Google Drive sharing URL (e.g., https://drive.google.com/file/d/abc123/view)
+              </p>
+            )}
+            {formData.google_drive_url && extractFileIdFromUrl(formData.google_drive_url) && !errors.google_drive_url && (
+              <p className="text-xs text-green-600 mt-1">
+                ✓ File ID detected: {extractFileIdFromUrl(formData.google_drive_url)}
               </p>
             )}
           </div>

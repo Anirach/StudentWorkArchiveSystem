@@ -37,15 +37,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Trust proxy (needed when behind nginx)
+app.set('trust proxy', 1);
+
 // Session configuration
 app.use(session({
+  name: 'swas.sid',
   secret: process.env.SESSION_SECRET || 'development-secret-key',
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // Set to true only when using HTTPS
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    path: '/'
   }
 }));
 

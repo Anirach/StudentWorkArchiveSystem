@@ -281,6 +281,13 @@ const insertDefaults = () => {
     insertConfig.run(config.key, config.value, config.description);
   }
 
+  // Default admin user
+  const insertAdmin = db.prepare(`
+    INSERT OR IGNORE INTO users (google_id, email, name, role, is_active)
+    VALUES (?, ?, ?, 'admin', 1)
+  `);
+  insertAdmin.run('admin_placeholder', 'anirach.m@fitm.kmutnb.ac.th', 'Anirach M');
+
   console.log('Default data inserted successfully!');
 };
 

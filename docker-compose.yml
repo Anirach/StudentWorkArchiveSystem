@@ -1,0 +1,51 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: swas-backend
+    ports:
+      - "3802:3802"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - ENABLE_DEV_LOGIN=true
+      - PORT=3802
+      - APP_URL=http://localhost:3802
+      - FRONTEND_URL=http://localhost:3801
+      - DATABASE_PATH=/app/data/archive.db
+      - SESSION_SECRET=${SESSION_SECRET:-your_session_secret_here}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_CALLBACK_URL=http://localhost:3801/auth/google/callback
+      - GOOGLE_SHARED_DRIVE_ID=${GOOGLE_SHARED_DRIVE_ID:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+    volumes:
+      - backend-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3802/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: swas-frontend
+    ports:
+      - "3801:3801"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+    name: swas-backend-data

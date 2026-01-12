@@ -7,6 +7,55 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+// Helper function to convert Google Drive URLs to direct download URLs
+function convertGoogleDriveUrl(url) {
+  if (!url) return null;
+
+  // Already a direct download URL
+  if (url.includes('uc?export=download') || url.includes('uc?id=')) {
+    return url;
+  }
+
+  // Extract file ID from various Google Drive URL formats
+  let fileId = null;
+
+  // Format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+  // Format: https://drive.google.com/file/d/FILE_ID/view
+  const fileMatch = url.match(/\/file\/d\/([^/]+)/);
+  if (fileMatch) {
+    fileId = fileMatch[1];
+  }
+
+  // Format: https://drive.google.com/open?id=FILE_ID
+  const openMatch = url.match(/[?&]id=([^&]+)/);
+  if (!fileId && openMatch) {
+    fileId = openMatch[1];
+  }
+
+  if (fileId) {
+    // Use the export URL format for direct PDF access
+    return `https://drive.google.com/uc?export=download&id=${fileId}`;
+  }
+
+  // Return original URL if not a recognized Google Drive format
+  return url;
+}
+
+// Extract Google Drive file ID from URL
+function extractGoogleDriveFileId(url) {
+  if (!url) return null;
+
+  // Format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+  const fileMatch = url.match(/\/file\/d\/([^/]+)/);
+  if (fileMatch) return fileMatch[1];
+
+  // Format: https://drive.google.com/open?id=FILE_ID
+  const openMatch = url.match(/[?&]id=([^&]+)/);
+  if (openMatch) return openMatch[1];
+
+  return null;
+}
+
 export default function PdfViewer({ fileUrl, googleFileId }) {
   const canvasRef = useRef(null);
   const [pdf, setPdf] = useState(null);
@@ -23,10 +72,27 @@ export default function PdfViewer({ fileUrl, googleFileId }) {
       setError(null);
 
       try {
-        // Prefer direct file URL over Google Drive
-        let pdfUrl = fileUrl;
+        let pdfUrl = null;
+
+        // Check if fileUrl is a Google Drive URL
+        if (fileUrl) {
+          if (fileUrl.includes('drive.google.com')) {
+            // Extract file ID and use proxy endpoint to avoid CORS issues
+            const extractedFileId = extractGoogleDriveFileId(fileUrl);
+            if (extractedFileId) {
+              pdfUrl = `/api/works/proxy-pdf/${extractedFileId}`;
+            } else {
+              // Fallback to direct conversion
+              pdfUrl = convertGoogleDriveUrl(fileUrl);
+            }
+          } else {
+            pdfUrl = fileUrl;
+          }
+        }
+
+        // Fall back to googleFileId if no fileUrl
         if (!pdfUrl && googleFileId) {
-          pdfUrl = `/api/works/pdf/${googleFileId}`;
+          pdfUrl = `/api/works/proxy-pdf/${googleFileId}`;
         }
 
         if (!pdfUrl) {
@@ -35,6 +101,8 @@ export default function PdfViewer({ fileUrl, googleFileId }) {
           return;
         }
 
+        console.log('Loading PDF from:', pdfUrl);
+
         const loadingTask = pdfjsLib.getDocument(pdfUrl);
         const pdfDoc = await loadingTask.promise;
         setPdf(pdfDoc);
@@ -42,7 +110,7 @@ export default function PdfViewer({ fileUrl, googleFileId }) {
         setCurrentPage(1);
       } catch (err) {
         console.error('Error loading PDF:', err);
-        setError('Failed to load PDF. The file may not exist or is not accessible.');
+        setError('Failed to load PDF. The file may not exist or is not publicly accessible. Make sure the file is shared with "Anyone with the link".');
       } finally {
         setLoading(false);
       }

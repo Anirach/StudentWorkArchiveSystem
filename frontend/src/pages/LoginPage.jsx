@@ -8,11 +8,28 @@ export default function LoginPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [devLoading, setDevLoading] = useState(false);
+  const [devLoginEnabled, setDevLoginEnabled] = useState(false);
 
   const from = location.state?.from?.pathname || '/';
-  const isDev = import.meta.env.DEV;
   // Check state, auth context, and URL params for session expired
   const sessionExpired = location.state?.sessionExpired || authSessionExpired || searchParams.get('session_expired') === 'true';
+
+  // Check if dev login is enabled on the backend
+  useEffect(() => {
+    const checkDevLogin = async () => {
+      try {
+        const response = await fetch('/auth/dev-login-status', { credentials: 'include' });
+        const data = await response.json();
+        if (data.success) {
+          setDevLoginEnabled(data.data.enabled);
+        }
+      } catch (error) {
+        // Dev login not available
+        setDevLoginEnabled(false);
+      }
+    };
+    checkDevLogin();
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -78,10 +95,10 @@ export default function LoginPage() {
         </p>
 
         {/* Development login options */}
-        {isDev && (
+        {devLoginEnabled && (
           <div className="mt-8 pt-8 border-t border-gray-200">
             <p className="text-sm text-muted-foreground mb-4">
-              Development Mode - Quick Login:
+              Quick Login (Testing Mode):
             </p>
             <div className="flex gap-3 justify-center">
               <button

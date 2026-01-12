@@ -655,6 +655,37 @@ router.put('/users/:id/status', (req, res) => {
   }
 });
 
+// DELETE /admin/users/:id - Delete user
+router.delete('/users/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = db.prepare('SELECT id, email, role FROM users WHERE id = ?').get(id);
+    if (!existing) {
+      return res.error('User not found', 'NOT_FOUND', 404);
+    }
+
+    // Prevent deleting own account
+    if (req.user.id === parseInt(id)) {
+      return res.error('Cannot delete your own account', 'FORBIDDEN', 403);
+    }
+
+    // Delete user's related data first
+    db.prepare('DELETE FROM votes WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM comments WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM favorites WHERE user_id = ?').run(id);
+    db.prepare('UPDATE activity_logs SET user_id = NULL WHERE user_id = ?').run(id);
+
+    // Delete user
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
+
+    res.success({ message: 'User deleted successfully', email: existing.email });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.error('Failed to delete user', 'ERROR', 500);
+  }
+});
+
 // === EXPORT ===
 
 // GET /admin/export/:type - Export data

@@ -375,6 +375,44 @@ router.post('/:id/view', (req, res) => {
   }
 });
 
+// GET /api/works/proxy-pdf/:fileId - Proxy PDF from Google Drive
+router.get('/proxy-pdf/:fileId', async (req, res) => {
+  try {
+    const { fileId } = req.params;
+
+    // Construct direct download URL
+    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+    // Use native fetch (Node.js 18+)
+    const response = await fetch(downloadUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      redirect: 'follow'
+    });
+
+    if (!response.ok) {
+      return res.error('Failed to fetch PDF from Google Drive', 'FETCH_ERROR', response.status);
+    }
+
+    // Get array buffer and check if it's actually a PDF
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Check if it's a PDF by looking at magic bytes
+    const isPdf = buffer.slice(0, 5).toString() === '%PDF-';
+
+    // Set appropriate headers - force PDF content type if it looks like a PDF
+    res.set('Content-Type', isPdf ? 'application/pdf' : (response.headers.get('content-type') || 'application/pdf'));
+    res.set('Access-Control-Allow-Origin', '*');
+
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error proxying PDF:', error);
+    res.error('Failed to fetch PDF', 'PROXY_ERROR', 500);
+  }
+});
+
 // GET /api/works/:id/download - Get download URL
 router.get('/:id/download', (req, res) => {
   try {

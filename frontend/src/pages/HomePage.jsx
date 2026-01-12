@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import PdfThumbnail from '../components/PdfThumbnail';
 
 export default function HomePage() {
   const [featuredWorks, setFeaturedWorks] = useState([]);
@@ -136,11 +137,11 @@ export default function HomePage() {
                         to={`/works/${work.id}`}
                         className="group block border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-background"
                       >
-                        <div className="aspect-video bg-muted flex items-center justify-center">
-                          <svg className="w-16 h-16 text-muted-foreground/30" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                          </svg>
-                        </div>
+                        <PdfThumbnail
+                          fileUrl={work.file_url}
+                          googleFileId={work.google_file_id}
+                          className="aspect-video"
+                        />
                         <div className="p-6">
                           <h3 className="text-xl font-semibold group-hover:text-primary">{work.title}</h3>
                           <p className="text-muted-foreground mt-1">{work.author_name}</p>
@@ -214,11 +215,11 @@ export default function HomePage() {
                   to={`/works/${work.id}`}
                   className="group block bg-background border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
                 >
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    <svg className="w-12 h-12 text-muted-foreground/30" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-                    </svg>
-                  </div>
+                  <PdfThumbnail
+                    fileUrl={work.file_url}
+                    googleFileId={work.google_file_id}
+                    className="aspect-video"
+                  />
                   <div className="p-4">
                     <h3 className="font-semibold group-hover:text-primary line-clamp-2">{work.title}</h3>
                     <p className="text-sm text-muted-foreground">{work.author_name}</p>
@@ -251,7 +252,11 @@ export default function HomePage() {
                   to={`/works/${work.id}`}
                   className="group block bg-background border rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
                 >
-                  <div className="aspect-video bg-muted"></div>
+                  <PdfThumbnail
+                    fileUrl={work.file_url}
+                    googleFileId={work.google_file_id}
+                    className="aspect-video"
+                  />
                   <div className="p-4">
                     <h3 className="font-semibold group-hover:text-primary line-clamp-2">{work.title}</h3>
                     <p className="text-sm text-muted-foreground">{work.author_name}</p>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { WorkTypeBadge } from '../components/WorkTypeIcon';
+import PdfThumbnail from '../components/PdfThumbnail';
 
 export default function BrowsePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -350,10 +351,15 @@ export default function BrowsePage() {
                   to={`/works/${work.id}`}
                   className={`group block border rounded-lg overflow-hidden hover:shadow-lg transition-shadow ${viewMode === 'list' ? 'flex' : ''}`}
                 >
-                  <div className={`bg-muted relative ${viewMode === 'grid' ? 'aspect-video' : 'w-48 h-32 shrink-0'}`}>
+                  <div className={`relative ${viewMode === 'grid' ? 'aspect-video' : 'w-48 h-32 shrink-0'}`}>
+                    <PdfThumbnail
+                      fileUrl={work.file_url}
+                      googleFileId={work.google_file_id}
+                      className="absolute inset-0"
+                    />
                     {/* Work Type Badge - positioned in top right corner */}
                     {work.work_type_name && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-2 right-2 z-10">
                         <WorkTypeBadge workType={work.work_type_name} className="bg-white/90 backdrop-blur-sm shadow-sm" />
                       </div>
                     )}
