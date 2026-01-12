@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Set PDF.js worker source - use local worker from node_modules
@@ -24,15 +24,23 @@ function extractGoogleDriveFileId(url) {
 
 // Cache for thumbnail data URLs to avoid re-rendering
 const thumbnailCache = new Map();
+// Cache for failed attempts to avoid repeated requests
+const failedCache = new Set();
+
+// Default thumbnail image for projects without a cover
+const DEFAULT_THUMBNAIL = '/ProjectDefaultThumbnail.png';
+
+// Timeout for PDF loading (5 seconds)
+const LOAD_TIMEOUT = 5000;
 
 function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUrl, className = '' }) {
-  const canvasRef = useRef(null);
   const [thumbnailUrl, setThumbnailUrl] = useState(providedThumbnailUrl || null);
   const [loading, setLoading] = useState(!providedThumbnailUrl);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId = null;
 
     const generateThumbnail = async () => {
       // If we already have a provided thumbnail URL, use it
@@ -72,7 +80,16 @@ function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUr
         return;
       }
 
-      // Check cache first
+      // Check failed cache first to avoid repeated failed requests
+      if (failedCache.has(cacheKey)) {
+        if (isMounted) {
+          setError(true);
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Check success cache
       if (thumbnailCache.has(cacheKey)) {
         if (isMounted) {
           setThumbnailUrl(thumbnailCache.get(cacheKey));
@@ -81,14 +98,24 @@ function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUr
         return;
       }
 
+      // Set a timeout to show default thumbnail if loading takes too long
+      timeoutId = setTimeout(() => {
+        if (isMounted && loading) {
+          console.warn('PDF thumbnail load timeout for:', cacheKey);
+          failedCache.add(cacheKey);
+          setError(true);
+          setLoading(false);
+        }
+      }, LOAD_TIMEOUT);
+
       try {
         // Load only the first page of the PDF
         const loadingTask = pdfjsLib.getDocument({
           url: pdfUrl,
-          // Disable features we don't need for thumbnails
-          disableFontFace: true,
-          disableRange: true,
-          disableStream: true,
+          // Enable font rendering for proper text display
+          disableFontFace: false,
+          disableRange: false,
+          disableStream: false,
         });
 
         const pdfDoc = await loadingTask.promise;
@@ -106,19 +133,25 @@ function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUr
         canvas.width = viewport.width;
         canvas.height = viewport.height;
 
+        // Fill with white background first
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
         // Render the page
         await page.render({
           canvasContext: context,
           viewport: viewport,
+          background: 'white',
         }).promise;
 
         // Convert to data URL
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
 
         // Cache the result
         thumbnailCache.set(cacheKey, dataUrl);
 
         if (isMounted) {
+          clearTimeout(timeoutId);
           setThumbnailUrl(dataUrl);
           setLoading(false);
         }
@@ -127,7 +160,9 @@ function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUr
         pdfDoc.destroy();
       } catch (err) {
         console.error('Error generating PDF thumbnail:', err);
+        failedCache.add(cacheKey);
         if (isMounted) {
+          clearTimeout(timeoutId);
           setError(true);
           setLoading(false);
         }
@@ -138,6 +173,7 @@ function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUr
 
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [fileUrl, googleFileId, providedThumbnailUrl]);
 
@@ -156,13 +192,13 @@ function PdfThumbnail({ fileUrl, googleFileId, thumbnailUrl: providedThumbnailUr
 
   if (error || !thumbnailUrl) {
     return (
-      <div className={`flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 ${className}`}>
-        <div className="flex flex-col items-center gap-2">
-          <svg className="w-16 h-16 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span className="text-xs text-slate-500 font-medium">PDF Document</span>
-        </div>
+      <div className={`overflow-hidden bg-muted ${className}`}>
+        <img
+          src={DEFAULT_THUMBNAIL}
+          alt="Default project cover"
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
     );
   }

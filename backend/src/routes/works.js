@@ -380,11 +380,11 @@ router.get('/proxy-pdf/:fileId', async (req, res) => {
   try {
     const { fileId } = req.params;
 
-    // Construct direct download URL
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    // First try the direct download URL
+    let downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
     // Use native fetch (Node.js 18+)
-    const response = await fetch(downloadUrl, {
+    let response = await fetch(downloadUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
@@ -396,15 +396,47 @@ router.get('/proxy-pdf/:fileId', async (req, res) => {
     }
 
     // Get array buffer and check if it's actually a PDF
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    let arrayBuffer = await response.arrayBuffer();
+    let buffer = Buffer.from(arrayBuffer);
 
     // Check if it's a PDF by looking at magic bytes
-    const isPdf = buffer.slice(0, 5).toString() === '%PDF-';
+    let isPdf = buffer.slice(0, 5).toString() === '%PDF-';
 
-    // Set appropriate headers - force PDF content type if it looks like a PDF
-    res.set('Content-Type', isPdf ? 'application/pdf' : (response.headers.get('content-type') || 'application/pdf'));
+    // If not a PDF, Google might be showing a download confirmation page
+    // Try the confirm download URL pattern for larger files
+    if (!isPdf) {
+      const htmlContent = buffer.toString('utf-8');
+
+      // Check if it's the Google Drive virus scan warning page
+      if (htmlContent.includes('confirm=') || htmlContent.includes('download_warning') || htmlContent.includes('Google Drive')) {
+        // Try alternative download URL with confirm parameter
+        const confirmUrl = `https://drive.google.com/uc?export=download&confirm=t&id=${fileId}`;
+
+        response = await fetch(confirmUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          redirect: 'follow'
+        });
+
+        if (response.ok) {
+          arrayBuffer = await response.arrayBuffer();
+          buffer = Buffer.from(arrayBuffer);
+          isPdf = buffer.slice(0, 5).toString() === '%PDF-';
+        }
+      }
+    }
+
+    // If still not a PDF, return an error
+    if (!isPdf) {
+      console.error('Fetched content is not a PDF. First bytes:', buffer.slice(0, 50).toString());
+      return res.error('The file is not accessible or not a PDF', 'NOT_PDF', 400);
+    }
+
+    // Set appropriate headers
+    res.set('Content-Type', 'application/pdf');
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
 
     res.send(buffer);
   } catch (error) {
